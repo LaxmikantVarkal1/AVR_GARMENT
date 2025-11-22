@@ -15,6 +15,7 @@ export const roleColumnConfig: Record<string, ColumnVisibility> = {
     collectDate: false,
     sizes: false,
     users: false,
+    print: true,
   },
   cutting: {
     partyName: false,
@@ -29,6 +30,7 @@ export const roleColumnConfig: Record<string, ColumnVisibility> = {
     collectDate: false,
     sizes: true,
     users: false,
+    print: true,
   },
   distributor: {
     partyName: false,
@@ -43,6 +45,22 @@ export const roleColumnConfig: Record<string, ColumnVisibility> = {
     collectDate: false,
     sizes: true,
     users: true,
+    print: true,
+  },
+  collector: {
+    partyName: false,
+    itemId: true, // Item ID
+    itemName: true, // Name
+    description: false,
+    received: true, // Received (disabled)
+    givenDate: false,
+    cutting: true, // Cutting (disabled)
+    cuttingDate: false,
+    collected: true, // Collected (total of all users' completed items)
+    collectDate: false,
+    sizes: false,
+    users: true, // Users (view-only)
+    print: true,
   },
 };
 

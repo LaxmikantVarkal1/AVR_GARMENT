@@ -11,20 +11,27 @@ const UserProfile: React.FC = () => {
 
   if (!user) return null;
 
+
   return (
     <div className="bg-white p-2 max-w-md mx-auto ">
       <h2 className="text-xs font-bold text-gray-900 mb-4">User Profile</h2>
       
       <div className="space-y-3">
+       <div>
+          <label className="block text-sm font-medium text-gray-500">Username</label>
+          <p className="mt-1 text-sm text-gray-900">{user?.display_name || user.email.split("@")[0]}</p>
+        </div>
+
+
         <div>
           <label className="block text-sm font-medium text-gray-500">Email</label>
           <p className="mt-1 text-sm text-gray-900">{user.email}</p>
         </div>
         
-        <div>
+        {/* <div>
           <label className="block text-sm font-medium text-gray-500">User ID</label>
           <p className="mt-1 text-gray-900 font-mono text-xs">{user.id}</p>
-        </div>
+        </div> */}
         
         <div>
           <label className="block text-sm font-medium text-gray-500 mb-2">Roles</label>

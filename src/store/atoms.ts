@@ -23,6 +23,7 @@ export const activeRoute = atom<string>("admin/dashboard");
 export const isLogin = atom<boolean>(true);
 export const authenticated = atom<boolean>(false);
 export const allowedRoles = atom<string[]>([]);
+export const employee = atom<string>("");
 
 // Dropdown options atoms
 export const partyNameOptionsAtom = atomWithStorage<DropdownOption[]>(
@@ -172,6 +173,8 @@ export const removeItemIdOptionAtom = atom(
     );
   }
 );
+
+
 
 
 

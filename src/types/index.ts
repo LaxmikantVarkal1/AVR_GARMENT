@@ -1,5 +1,5 @@
 // Placeholder for type definitions
-export type UserRole = "admin" | "cutting" | "distributor";
+export type UserRole = "admin" | "cutting" | "distributor" | "collector" | "users";
 
 export interface User {
   name: string;
@@ -40,6 +40,7 @@ export interface ColumnVisibility {
   collectDate: boolean;
   sizes: boolean;
   users: boolean;
+  print: boolean;
 }
 
 export interface DropdownOption {

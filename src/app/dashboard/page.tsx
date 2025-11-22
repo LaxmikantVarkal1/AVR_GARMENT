@@ -3,12 +3,11 @@
 import * as React from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
-  GalleryVerticalEnd,
   Plus,
   Save as SaveIcon,
-  Search,
   Trash2,
-  X as XIcon,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   Table,
@@ -18,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -50,7 +48,7 @@ import {
   addItemNameOptionAtom,
   addItemIdOptionAtom,
   allUsersAtom,
-  allowedRoles
+  allowedRoles,
 } from "@/store/atoms";
 import { roleColumnConfig } from "@/constants";
 import { type UserRole } from "@/types";
@@ -69,13 +67,21 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import ReceiptViewModal from "@/components/ui/preview";
+import { Card, CardHeader } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+import useKeepScrollXY from "../../hooks/useKeepScrollPosition"
 
 export default function MainDashboard() {
   const [parties, setParties] = useAtom(partiesAtom);
-  const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
+  //setSearchQuery
+  const [searchQuery] = useAtom(searchQueryAtom);
   const [userRole, setUserRole] = useAtom(userRoleAtom);
+  // const [activeTab, setActiveTab] = React.useState("dashboard");
   const filteredData = useAtomValue(filteredPartiesAtom);
-  // const [ login, setIsLogin] = useAtom(isLogin);
+  const scrollRef = useKeepScrollXY();
 
   const partyNameOptions = useAtomValue(partyNameOptionsAtom);
   const itemNameOptions = useAtomValue(itemNameOptionsAtom);
@@ -87,14 +93,30 @@ export default function MainDashboard() {
   const addItemNameOption = useSetAtom(addItemNameOptionAtom);
   const addItemIdOption = useSetAtom(addItemIdOptionAtom);
 
-  const columnVisibility = roleColumnConfig[userRole];
+  const columnVisibility = roleColumnConfig[userRole] || roleColumnConfig.admin;
+
+  
 
   // Pagination state
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage] = React.useState(30);
-  // const setuser = useSetAtom(setUserAtom);
   const [allUsers] = useAtom(allUsersAtom);
   const [role] = useAtom(allowedRoles);
+
+  // Track expanded cards
+  const [expandedCards, setExpandedCards] = React.useState<Set<string>>(new Set());
+
+  const toggleCard = (cardId: string) => {
+    setExpandedCards((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(cardId)) {
+        newSet.delete(cardId);
+      } else {
+        newSet.add(cardId);
+      }
+      return newSet;
+    });
+  };
 
   // Flatten and paginate data
   const { paginatedData } = React.useMemo(() => {
@@ -132,16 +154,12 @@ export default function MainDashboard() {
   const fetchedParties = useAtomValue(fetchPartiesAtom);
   const [, saveParties] = useAtom(savePartiesAtom);
 
-  React.useEffect(() => {
-    setParties(fetchedParties[0].data || []);
-  }, [fetchedParties]);
-
   const handleSaveData = async () => {
     console.log("=== SAVED DATA ===");
     console.log("Current User Role:", userRole);
     console.log("Parties Data:", parties);
     console.log("fetchedParties Data from Supabase:", fetchedParties);
-    await saveParties(1,parties);
+    await saveParties(1, parties);
     console.log(allUsers);
     console.log("==================");
   };
@@ -217,631 +235,1187 @@ export default function MainDashboard() {
     return partyIndex % 2 === 0 ? "bg-background" : "bg-muted/30";
   };
 
+
+  // Mobile Card Component
+  const MobileItemCard = ({ party, item, partyIndex, itemIndex }: any) => {
+    const cardId = `${party.id}-${item._internalId}`;
+    const isExpanded = expandedCards.has(cardId);
+
+  
+
+    return (
+     
+      <Card className={`min-w-[320px] max-w-[320px] m-1.5 ${getPartyBgClass(partyIndex)}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 space-y-2">
+              {columnVisibility.partyName && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Party Name</p>
+                  {userRole === "collector" ? (
+                    <div className="text-sm font-medium">{party.id}</div>
+                  ) : (
+                    <div className="flex gap-2">
+                      {itemIndex === 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            const updatedParties = parties.filter(
+                              (p) => p.id !== party.id
+                            );
+                            setParties(updatedParties);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <div className="flex-1">
+                        <CreatableCombobox
+                          value={party.party_name}
+                          onValueChange={(value) =>
+                            updatePartyName({
+                              partyId: party.id,
+                              newName: value,
+                            })
+                          }
+                          options={partyNameOptions}
+                          onCreateOption={addPartyNameOption}
+                          placeholder="Select party..."
+                          searchPlaceholder="Search party..."
+                          emptyText="No party found."
+                          type="partyName"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {columnVisibility.itemId && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Item ID</p>
+                  {userRole === "collector" ? (
+                    <div className="text-sm font-medium">{item.id || "—"}</div>
+                  ) : (
+                    <div className="flex gap-2">
+                      {itemIndex === party.items.length - 1 && userRole === "admin" && (
+                        <Button
+                          onClick={() => handleAddItem(party.party_name)}
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <div className="flex-1">
+                        <CreatableCombobox
+                          value={item.id}
+                          disabled={userRole !== "admin"}
+                          type="itemId"
+                          onValueChange={(value) =>
+                            updateItemField({
+                              partyId: party.id,
+                              internalItemId: item._internalId,
+                              field: "id",
+                              value,
+                            })
+                          }
+                          options={itemIdOptions}
+                          onCreateOption={addItemIdOption}
+                          placeholder="Select ID..."
+                          searchPlaceholder="Search ID..."
+                          emptyText="No ID found."
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {columnVisibility.itemName && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Item Name</p>
+                  <CreatableCombobox
+                    value={item.name}
+                    type="itemName"
+                    disabled={userRole !== "admin"}
+                    onValueChange={(value) =>
+                      updateItemField({
+                        partyId: party.id,
+                        internalItemId: item._internalId,
+                        field: "name",
+                        value,
+                      })
+                    }
+                    options={itemNameOptions}
+                    onCreateOption={addItemNameOption}
+                    placeholder="Select item..."
+                    searchPlaceholder="Search item..."
+                    emptyText="No item found."
+                  />
+                </div>
+              )}
+            </div>
+
+            {itemIndex !== 0 && userRole !== "collector" && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0"
+                onClick={() => handleDeleteItem(party.id, item._internalId)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <Collapsible open={isExpanded} onOpenChange={() => toggleCard(cardId)}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full mt-2">
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-2" />
+                    Show Less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-4 w-4 mr-2" />
+                    Show More Details
+                  </>
+                )}
+              </Button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent className="space-y-3 mt-3">
+              {columnVisibility.description && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Description</p>
+                  <EditableTextarea
+                    value={item.description}
+                    label="Description"
+                    onSave={(value) =>
+                      updateItemField({
+                        partyId: party.id,
+                        internalItemId: item._internalId,
+                        field: "description",
+                        value,
+                      })
+                    }
+                  />
+                </div>
+              )}
+
+              {columnVisibility.received && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Received</p>
+                  {userRole === "collector" ? (
+                    <div className="text-sm font-medium opacity-60">{item.recived || "—"}</div>
+                  ) : (
+                    <EditableCell
+                      value={item.recived}
+                      label="Received"
+                      onSave={(value) =>
+                        updateItemField({
+                          partyId: party.id,
+                          internalItemId: item._internalId,
+                          field: "recived",
+                          value,
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              )}
+
+              {columnVisibility.givenDate && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Given Date</p>
+                  <DatePicker
+                    date={item.givenClothDate}
+                    onDateChange={(date) =>
+                      updateItemField({
+                        partyId: party.id,
+                        internalItemId: item._internalId,
+                        field: "givenClothDate",
+                        value: date,
+                      })
+                    }
+                    placeholder="Select given date"
+                  />
+                </div>
+              )}
+
+              {columnVisibility.cutting && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Cutting</p>
+                  {userRole === "collector" ? (
+                    <div className="text-sm font-medium opacity-60">{item.cuttting || "—"}</div>
+                  ) : (
+                    <EditableCell
+                      value={item.cuttting}
+                      label="Cutting"
+                      onSave={(value) =>
+                        updateItemField({
+                          partyId: party.id,
+                          internalItemId: item._internalId,
+                          field: "cuttting",
+                          value,
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              )}
+
+              {columnVisibility.cuttingDate && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Cutting Date</p>
+                  <DatePicker
+                    date={item.cuttingDate}
+                    onDateChange={(date) =>
+                      updateItemField({
+                        partyId: party.id,
+                        internalItemId: item._internalId,
+                        field: "cuttingDate",
+                        value: date,
+                      })
+                    }
+                    placeholder="Select cutting date"
+                  />
+                </div>
+              )}
+
+              {columnVisibility.collected && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {userRole === "collector" ? "Collected (Total)" : "Collected"}
+                  </p>
+                  {userRole === "collector" ? (
+                    <div className="text-sm font-medium">
+                      {(item.user || []).reduce(
+                        (sum: number, userEntry: any) => sum + (userEntry.completed || 0),
+                        0
+                      )}
+                    </div>
+                  ) : (
+                    <EditableCell
+                      value={item.collected}
+                      label="Collected"
+                      onSave={(value) =>
+                        updateItemField({
+                          partyId: party.id,
+                          internalItemId: item._internalId,
+                          field: "collected",
+                          value,
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              )}
+
+              {columnVisibility.collectDate && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Collect Date</p>
+                  <DatePicker
+                    date={item.collectDate}
+                    onDateChange={(date) =>
+                      updateItemField({
+                        partyId: party.id,
+                        internalItemId: item._internalId,
+                        field: "collectDate",
+                        value: date,
+                      })
+                    }
+                    placeholder="Select collect date"
+                  />
+                </div>
+              )}
+
+              {columnVisibility.sizes && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Sizes</p>
+                  <div className="flex flex-wrap gap-1.5 p-2 border rounded">
+                    {item.sizes.length === 0 ? (
+                      <span className="text-sm text-muted-foreground">No sizes</span>
+                    ) : (
+                      item.sizes.map((size: any, sizeIndex: number) => (
+                        <Badge key={sizeIndex} variant="secondary" className="text-xs">
+                          {size}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                  {userRole === "cutting" && (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full mt-2">
+                          Edit ({item.sizes.length} sizes)
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Manage Sizes (Todo List)</DialogTitle>
+                          <DialogDescription>
+                            Add, check off, or delete sizes. Checked items are marked as complete.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <SizesTodo
+                          items={item.sizes}
+                          onUpdate={(newSizes) =>
+                            updateItemField({
+                              partyId: party.id,
+                              internalItemId: item._internalId,
+                              field: "sizes",
+                              value: newSizes,
+                            })
+                          }
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              )}
+
+              {columnVisibility.users && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Users</p>
+                  {userRole === "collector" ? (
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full">
+                          {item.user?.length || 0} users
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px]  lg:w-[540px]">
+                        <SheetHeader>
+                          <SheetTitle>Users & Completed Items</SheetTitle>
+                          <SheetDescription>
+                            View users and their completed items (read-only).
+                          </SheetDescription>
+                        </SheetHeader>
+                        <div className="mt-6 space-y-4">
+                          {item.user && item.user.length > 0 ? (
+                            <div className="space-y-3">
+                              {item.user.map((userEntry: any, index: number) => {
+                                const getDisplayName = (user: any) => {
+                                  return user?.display_name || user?.name || user?.email || user?.user || "Unknown User";
+                                };
+                                const getTotalCount = (entry: any) => {
+                                  return (entry.sizes || []).reduce(
+                                    (total: number, s: any) => total + (s.count || 0),
+                                    0
+                                  );
+                                };
+                                const totalItems = getTotalCount(userEntry);
+                                const completedItems = userEntry.completed || 0;
+
+                                return (
+                                  <div key={index} className="border rounded-lg p-4 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="font-semibold text-sm">
+                                        {getDisplayName(userEntry.user)}
+                                      </h4>
+                                      <Badge variant="secondary" className="text-xs">
+                                        Menu: {userEntry.menuId || "N/A"}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-sm space-y-1">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-muted-foreground">Completed:</span>
+                                        <span className="font-medium">
+                                          {completedItems} / {totalItems}
+                                        </span>
+                                      </div>
+                                      {userEntry.sizes && userEntry.sizes.length > 0 && (
+                                        <div className="mt-2">
+                                          <p className="text-xs text-muted-foreground mb-1">Sizes:</p>
+                                          <div className="flex flex-wrap gap-1">
+                                            {userEntry.sizes.map((sizeEntry: any, sizeIndex: number) => (
+                                              <Badge key={sizeIndex} variant="outline" className="text-xs">
+                                                {sizeEntry.size} × {sizeEntry.count}
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <p className="text-sm">No users assigned</p>
+                            </div>
+                          )}
+                        </div>
+                      </SheetContent>
+                    </Sheet>
+                  ) : (
+                    <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        {item.user?.length || 0} users
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px]  lg:w-[540px]">
+                      <SheetHeader>
+                        <SheetTitle>Users & Completed Items</SheetTitle>
+                        <SheetDescription>
+                          View users and their completed items (can edit).
+                        </SheetDescription>
+                      </SheetHeader>
+                      <UserManager
+                        users={item.user || []}
+                        sizes={item.sizes.map((s: any) => ({
+                          value: s,
+                          label: s.split(":")[0],
+                        }))}
+                        onUpdate={(newUsers) =>
+                          updateItemField({
+                            partyId: party.id,
+                            internalItemId: item._internalId,
+                            field: "user",
+                            value: newUsers,
+                          })
+                        }
+                      />
+                    </SheetContent>
+                  </Sheet>
+                  )}
+                </div>
+              )}
+
+              {columnVisibility.print && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Print</p>
+                  <ReceiptViewModal data={parties} filter={party.party_name} />
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+        </CardHeader>
+      </Card>
+
+    );
+  };
+
   return (
     <div className="w-full flex flex-col p-6 pb-5 pt:2 md:pt-10">
-      <a href="#" className="flex items-start gap-2 self-start font-medium">
-          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-            <GalleryVerticalEnd className="size-4" />
-          </div>
-          AVR Garment
-        </a>
-      {/* Fixed Action Buttons */}
-      <div className="flex items-center justify-start h-16 w-full flex-row gap-4 sticky top-0 bg-background z-20">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-6 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by party, item, description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-10"
-          />
-          {searchQuery && (
+      
+
+      <div className="space-y-4">
+         {/* Fixed Action Buttons */}
+         <div className="flex items-center justify-end h-16 w-full flex-row gap-4 sticky top-0 bg-background z-20">
+            {/* <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-6 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by party, item, description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <XIcon className="h-4 w-4" />
+                </Button>
+              )}
+            </div> */}
+            {userRole === "admin" && (
+              <div className="flex justify-between items-center gap-4">
+                <div className="flex-1 items-center gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleAddRow}
+                    size="lg"
+                    className="gap-2 flex-1"
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span>Add Row</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+            {parties && userRole !== "users" && <ReceiptViewModal data={parties} filter={"all"} />}
+
             <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-              onClick={() => setSearchQuery("")}
+              onClick={handleSaveData}
+              variant="secondary"
+              className="gap-2 mr-auto hidden md:flex"
             >
-              <XIcon className="h-4 w-4" />
+              <SaveIcon className="h-5 w-5" />
+              Save Data
             </Button>
-          )}
-        </div>
-        {userRole == "admin" && (
-          <div className="flex justify-between items-center gap-4">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                onClick={handleAddRow}
-                size="lg"
-                className="gap-2"
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Avatar>
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+              </PopoverTrigger>
+              <PopoverContent className="w-80">
+                <UserProfile />
+              </PopoverContent>
+            </Popover>
+            <div className="hidden sm:block">
+              <Select
+                value={userRole}
+                onValueChange={(value: UserRole) => setUserRole(value)}
               >
-                <Plus className="h-5 w-5" />
-                <span className="hidden md:block ">Add Row</span>
-              </Button>
+                <SelectTrigger id="role-select" className="w-[180px]">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {role.map((r: any) => (
+                    <SelectItem key={r} value={r}>
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        )}
-        <Button
-          onClick={handleSaveData}
-          variant="secondary"
-          className="gap-2 mr-auto hidden md:flex"
-        >
-          <SaveIcon className="h-5 w-5" />
-          Save Data
-        </Button>
-        {/* <span>{user?.email && `Logged in as: ${user.email}`}</span> */}
-        {/* <Button
-          variant="destructive"
-          onClick={() => {
-            authService.logout();
-            setIsAuthenticated(false);
-          }}
-        >
-          <LogOut className="h-5 w-5 mr-2" />{" "}
-          <span className="hidden sm:block">Logout</span>
-        </Button> */}
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
-          </PopoverTrigger>
-          <PopoverContent className="w-80">
-            <UserProfile />
-          </PopoverContent>
-        </Popover>
-        <div className="hidden sm:block">
-          <Select
-            value={userRole}
-            onValueChange={(value: UserRole) => setUserRole(value)}
-          >
-            <SelectTrigger id="role-select" className="w-[180px]">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              {/* <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="cutting">Cutting</SelectItem>
-              <SelectItem value="distributor">Distributor</SelectItem> */}
-              {role.map((r: any) => (
-                <SelectItem key={r} value={r}>
-                  {r.charAt(0).toUpperCase() + r.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+          {/* Desktop Table View (hidden on mobile) */}
+          {parties.length > 0 && (
+            <div className="hidden md:block h-auto flex-col pb-5 overflow-hidden">
+              <div className="rounded-md border flex-1 overflow-hidden flex flex-col">
+                <div className="overflow-auto flex-1">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                      <TableRow>
+                        {columnVisibility.partyName && (
+                          <TableHead className="w-auto bg-background sticky">
+                            Party Name
+                          </TableHead>
+                        )}
+                        {columnVisibility.itemId && (
+                          <TableHead className="w-auto bg-background">
+                            Item ID
+                          </TableHead>
+                        )}
+                        {columnVisibility.itemName && (
+                          <TableHead className="w-[150px] bg-background">
+                            Item Name
+                          </TableHead>
+                        )}
+                        {columnVisibility.description && (
+                          <TableHead className="min-w-[200px] bg-background">
+                            Description
+                          </TableHead>
+                        )}
+                        {columnVisibility.received && (
+                          <TableHead className="w-[120px] bg-background">
+                            Received
+                          </TableHead>
+                        )}
+                        {columnVisibility.givenDate && (
+                          <TableHead className="w-[160px] bg-background">
+                            Given Date
+                          </TableHead>
+                        )}
+                        {columnVisibility.cutting && (
+                          <TableHead className="w-[120px] bg-background">
+                            Cutting
+                          </TableHead>
+                        )}
+                        {columnVisibility.cuttingDate && (
+                          <TableHead className="w-[160px] bg-background">
+                            Cutting Date
+                          </TableHead>
+                        )}
+                        {columnVisibility.collected && (
+                          <TableHead className="w-[120px] bg-background">
+                            {userRole === "collector" ? "Collected (Total)" : "Collected"}
+                          </TableHead>
+                        )}
+                        {columnVisibility.collectDate && (
+                          <TableHead className="w-[160px] bg-background">
+                            Collect Date
+                          </TableHead>
+                        )}
+                        {columnVisibility.sizes && (
+                          <TableHead className="min-w-[200px] text-center bg-background">
+                            Sizes
+                          </TableHead>
+                        )}
+                        {columnVisibility.users && (
+                          <TableHead className="w-[100px] text-center bg-background">
+                            Users
+                          </TableHead>
+                        )}
+                        {columnVisibility.print && (
+                          <TableHead className="w-[100px] text-center bg-background">
+                            print
+                          </TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedData.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={12}
+                            className="text-center py-8 text-muted-foreground"
+                          >
+                            No results found for "{searchQuery}"
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        paginatedData.map(({ party, item, partyIndex, itemIndex }) => {
+                          const bgClass = getPartyBgClass(partyIndex);
 
-      {/* Scrollable Table Container */}
-      {parties.length > 0 && (
-        <div className="h-auto flex flex-col pb-5 overflow-hidden">
-          <div className="rounded-md border flex-1 overflow-hidden flex flex-col">
-            {/* Table with fixed header */}
-            <div className="overflow-auto flex-1">
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background">
-                  <TableRow>
-                    {columnVisibility.partyName && (
-                      <TableHead className="w-auto bg-background sticky ">
-                        Party Name
-                      </TableHead>
-                    )}
-                    {columnVisibility.itemId && (
-                      <TableHead className="w-auto bg-background">
-                        Item ID
-                      </TableHead>
-                    )}
-                    {columnVisibility.itemName && (
-                      <TableHead className="w-[150px] bg-background">
-                        Item Name
-                      </TableHead>
-                    )}
-                    {columnVisibility.description && (
-                      <TableHead className="min-w-[200px] bg-background">
-                        Description
-                      </TableHead>
-                    )}
-                    {columnVisibility.received && (
-                      <TableHead className="w-[120px] bg-background">
-                        Received
-                      </TableHead>
-                    )}
-                    {columnVisibility.givenDate && (
-                      <TableHead className="w-[160px] bg-background">
-                        Given Date
-                      </TableHead>
-                    )}
-                    {columnVisibility.cutting && (
-                      <TableHead className="w-[120px] bg-background">
-                        Cutting
-                      </TableHead>
-                    )}
-                    {columnVisibility.cuttingDate && (
-                      <TableHead className="w-[160px] bg-background">
-                        Cutting Date
-                      </TableHead>
-                    )}
-                    {columnVisibility.collected && (
-                      <TableHead className="w-[120px] bg-background">
-                        Collected
-                      </TableHead>
-                    )}
-                    {columnVisibility.collectDate && (
-                      <TableHead className="w-[160px] bg-background">
-                        Collect Date
-                      </TableHead>
-                    )}
-                    {columnVisibility.sizes && (
-                      <TableHead className="min-w-[200px] text-center bg-background">
-                        Sizes
-                      </TableHead>
-                    )}
-                    {columnVisibility.users && (
-                      <TableHead className="w-[100px] text-center bg-background">
-                        Users
-                      </TableHead>
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedData.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={12}
-                        className="text-center py-8 text-muted-foreground"
-                      >
-                        No results found for "{searchQuery}"
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedData.map(
-                      ({ party, item, partyIndex, itemIndex }) => {
-                        const bgClass = getPartyBgClass(partyIndex);
+                          return (
+                            <TableRow key={item._internalId} className={bgClass}>
+                              {columnVisibility.partyName && (
+                                <TableCell className="align-top pr-10">
+                                  {userRole === "collector" ? (
+                                    <div className="text-sm font-medium">{party.id}</div>
+                                  ) : (
+                                    <>
+                                      {itemIndex === 0 ? (
+                                        <ButtonGroup>
+                                          <Button
+                                            className="w-auto cursor-pointer hover:bg-red-100"
+                                            variant="outline"
+                                            onClick={() => {
+                                              const updatedParties = parties.filter(
+                                                (p) => p.id !== party.id
+                                              );
+                                              setParties(updatedParties);
+                                            }}
+                                          >
+                                            <Trash2 className="h-4 w-4 text-gray-600" />
+                                          </Button>
+                                          <CreatableCombobox
+                                            value={party.party_name}
+                                            onValueChange={(value) =>
+                                              updatePartyName({
+                                                partyId: party.id,
+                                                newName: value,
+                                              })
+                                            }
+                                            options={partyNameOptions}
+                                            onCreateOption={addPartyNameOption}
+                                            placeholder="Select party..."
+                                            searchPlaceholder="Search party..."
+                                            emptyText="No party found."
+                                            type="partyName"
+                                          />
+                                        </ButtonGroup>
+                                      ) : (
+                                        <ButtonGroup>
+                                          <Button
+                                            className="w-auto cursor-pointer hover:bg-red-100"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              handleDeleteItem(party.id, item._internalId);
+                                            }}
+                                          >
+                                            <Trash2 className="h-4 w-4 text-gray-600" />
+                                          </Button>
+                                        </ButtonGroup>
+                                      )}
+                                    </>
+                                  )}
+                                </TableCell>
+                              )}
 
-                        return (
-                          <TableRow key={item._internalId} className={bgClass}>
-                            {columnVisibility.partyName && (
-                              <TableCell className="align-top pr-10">
-                                {itemIndex === 0 ? (
-                                  <ButtonGroup>
-                                    <Button
-                                      className="w-auto cursor-pointer hover:bg-red-100"
-                                      variant="outline"
-                                      onClick={() => {
-                                        const updatedParties = parties.filter(
-                                          (p) => p.id !== party.id
-                                        );
-                                        setParties(updatedParties);
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-gray-600" />
-                                    </Button>
-                                    <CreatableCombobox
-                                      value={party.party_name}
-                                      onValueChange={(value) =>
-                                        updatePartyName({
-                                          partyId: party.id,
-                                          newName: value,
-                                        })
-                                      }
-                                      options={partyNameOptions}
-                                      onCreateOption={addPartyNameOption}
-                                      placeholder="Select party..."
-                                      searchPlaceholder="Search party..."
-                                      emptyText="No party found."
-                                      type="partyName"
-                                    />
-                                  </ButtonGroup>
-                                ) : (
-                                  <ButtonGroup>
-                                    <Button
-                                      className="w-auto cursor-pointer hover:bg-red-100"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        handleDeleteItem(
-                                          party.id,
-                                          item._internalId
-                                        );
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-gray-600" />
-                                    </Button>
-                                  </ButtonGroup>
-                                )}
-                              </TableCell>
-                            )}
+                              {columnVisibility.itemId && (
+                                <TableCell className="align-top pr-10">
+                                  {userRole === "collector" ? (
+                                    <div className="text-sm font-medium">{item.id || "—"}</div>
+                                  ) : (
+                                    <ButtonGroup>
+                                      {itemIndex === party.items.length - 1 &&
+                                        userRole === "admin" && (
+                                          <Button
+                                            onClick={() => {
+                                              handleAddItem(party.party_name);
+                                            }}
+                                            className="w-5"
+                                            variant="outline"
+                                          >
+                                            +
+                                          </Button>
+                                        )}
+                                      <CreatableCombobox
+                                        value={item.id}
+                                        disabled={userRole !== "admin"}
+                                        type="itemId"
+                                        onValueChange={(value) =>
+                                          updateItemField({
+                                            partyId: party.id,
+                                            internalItemId: item._internalId,
+                                            field: "id",
+                                            value,
+                                          })
+                                        }
+                                        options={itemIdOptions}
+                                        onCreateOption={addItemIdOption}
+                                        placeholder="Select ID..."
+                                        searchPlaceholder="Search ID..."
+                                        emptyText="No ID found."
+                                      />
+                                    </ButtonGroup>
+                                  )}
+                                </TableCell>
+                              )}
 
-                            {columnVisibility.itemId && (
-                              <TableCell className="align-top pr-10 ">
-                                <ButtonGroup>
-                                  {itemIndex == party.items.length - 1 &&
-                                    userRole === "admin" && (
-                                      <Button
-                                        onClick={() => {
-                                          handleAddItem(party.party_name);
-                                        }}
-                                        className="w-5"
-                                        variant="outline"
-                                      >
-                                        +
-                                      </Button>
-                                    )}
+                              {columnVisibility.itemName && (
+                                <TableCell className="align-top pr-10">
                                   <CreatableCombobox
-                                    value={item.id}
+                                    value={item.name}
+                                    type="itemName"
                                     disabled={userRole !== "admin"}
-                                    type="itemId"
                                     onValueChange={(value) =>
                                       updateItemField({
                                         partyId: party.id,
                                         internalItemId: item._internalId,
-                                        field: "id",
+                                        field: "name",
                                         value,
                                       })
                                     }
-                                    options={itemIdOptions}
-                                    onCreateOption={addItemIdOption}
-                                    placeholder="Select ID..."
-                                    searchPlaceholder="Search ID..."
-                                    emptyText="No ID found."
+                                    options={itemNameOptions}
+                                    onCreateOption={addItemNameOption}
+                                    placeholder="Select item..."
+                                    searchPlaceholder="Search item..."
+                                    emptyText="No item found."
                                   />
-                                </ButtonGroup>
-                              </TableCell>
-                            )}
+                                </TableCell>
+                              )}
 
-                            {columnVisibility.itemName && (
-                              <TableCell className="align-top pr-10 ">
-                                <CreatableCombobox
-                                  value={item.name}
-                                  type="itemName"
-                                  disabled={userRole !== "admin"}
-                                  onValueChange={(value) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "name",
-                                      value,
-                                    })
-                                  }
-                                  options={itemNameOptions}
-                                  onCreateOption={addItemNameOption}
-                                  placeholder="Select item..."
-                                  searchPlaceholder="Search item..."
-                                  emptyText="No item found."
-                                />
-                              </TableCell>
-                            )}
+                              {columnVisibility.description && (
+                                <TableCell className="min-w-[200px] align-top">
+                                  <EditableTextarea
+                                    value={item.description}
+                                    label="Description"
+                                    onSave={(value) =>
+                                      updateItemField({
+                                        partyId: party.id,
+                                        internalItemId: item._internalId,
+                                        field: "description",
+                                        value,
+                                      })
+                                    }
+                                  />
+                                </TableCell>
+                              )}
 
-                            {columnVisibility.description && (
-                              <TableCell className="min-w-[200px] align-top">
-                                <EditableTextarea
-                                  value={item.description}
-                                  label="Description"
-                                  onSave={(value) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "description",
-                                      value,
-                                    })
-                                  }
-                                />
-                              </TableCell>
-                            )}
-
-                            {columnVisibility.received && (
-                              <TableCell className="align-top">
-                                <EditableCell
-                                  value={item.recived}
-                                  label="Received"
-                                  onSave={(value) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "recived",
-                                      value,
-                                    })
-                                  }
-                                />
-                              </TableCell>
-                            )}
-
-                            {columnVisibility.givenDate && (
-                              <TableCell className="align-top">
-                                <DatePicker
-                                  date={item.givenClothDate}
-                                  onDateChange={(date) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "givenClothDate",
-                                      value: date,
-                                    })
-                                  }
-                                  placeholder="Select given date"
-                                />
-                              </TableCell>
-                            )}
-
-                            {columnVisibility.cutting && (
-                              <TableCell className="align-top">
-                                <EditableCell
-                                  value={item.cuttting}
-                                  label="Cutting"
-                                  onSave={(value) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "cuttting",
-                                      value,
-                                    })
-                                  }
-                                />
-                              </TableCell>
-                            )}
-
-                            {columnVisibility.cuttingDate && (
-                              <TableCell className="align-top">
-                                <DatePicker
-                                  date={item.cuttingDate}
-                                  onDateChange={(date) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "cuttingDate",
-                                      value: date,
-                                    })
-                                  }
-                                  placeholder="Select cutting date"
-                                />
-                              </TableCell>
-                            )}
-
-                            {columnVisibility.collected && (
-                              <TableCell className="align-top">
-                                <EditableCell
-                                  value={item.collected}
-                                  label="Collected"
-                                  onSave={(value) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "collected",
-                                      value,
-                                    })
-                                  }
-                                />
-                              </TableCell>
-                            )}
-
-                            {columnVisibility.collectDate && (
-                              <TableCell className="align-top">
-                                <DatePicker
-                                  date={item.collectDate}
-                                  onDateChange={(date) =>
-                                    updateItemField({
-                                      partyId: party.id,
-                                      internalItemId: item._internalId,
-                                      field: "collectDate",
-                                      value: date,
-                                    })
-                                  }
-                                  placeholder="Select collect date"
-                                />
-                              </TableCell>
-                            )}
-
-                            {columnVisibility.sizes && (
-                              <TableCell className="align-top max-w-[300px]">
-                                <div className="flex flex-wrap gap-1.5 p-2">
-                                  {item.sizes.length === 0 ? (
-                                    <span className="text-sm text-muted-foreground">
-                                      No sizes
-                                    </span>
+                              {columnVisibility.received && (
+                                <TableCell className="align-top">
+                                  {userRole === "collector" ? (
+                                    <div className="text-sm font-medium opacity-60">
+                                      {item.recived || "—"}
+                                    </div>
                                   ) : (
-                                    item.sizes.map(
-                                      (size: any, sizeIndex: number) => (
+                                    <EditableCell
+                                      value={item.recived}
+                                      label="Received"
+                                      onSave={(value) =>
+                                        updateItemField({
+                                          partyId: party.id,
+                                          internalItemId: item._internalId,
+                                          field: "recived",
+                                          value,
+                                        })
+                                      }
+                                    />
+                                  )}
+                                </TableCell>
+                              )}
+
+                              {columnVisibility.givenDate && (
+                                <TableCell className="align-top">
+                                  <DatePicker
+                                    date={item.givenClothDate}
+                                    onDateChange={(date) =>
+                                      updateItemField({
+                                        partyId: party.id,
+                                        internalItemId: item._internalId,
+                                        field: "givenClothDate",
+                                        value: date,
+                                      })
+                                    }
+                                    placeholder="Select given date"
+                                  />
+                                </TableCell>
+                              )}
+
+                              {columnVisibility.cutting && (
+                                <TableCell className="align-top">
+                                  {userRole === "collector" ? (
+                                    <div className="text-sm font-medium opacity-60">
+                                      {item.cuttting || "—"}
+                                    </div>
+                                  ) : (
+                                    <EditableCell
+                                      value={item.cuttting}
+                                      label="Cutting"
+                                      onSave={(value) =>
+                                        updateItemField({
+                                          partyId: party.id,
+                                          internalItemId: item._internalId,
+                                          field: "cuttting",
+                                          value,
+                                        })
+                                      }
+                                    />
+                                  )}
+                                </TableCell>
+                              )}
+
+                              {columnVisibility.cuttingDate && (
+                                <TableCell className="align-top">
+                                  <DatePicker
+                                    date={item.cuttingDate}
+                                    onDateChange={(date) =>
+                                      updateItemField({
+                                        partyId: party.id,
+                                        internalItemId: item._internalId,
+                                        field: "cuttingDate",
+                                        value: date,
+                                      })
+                                    }
+                                    placeholder="Select cutting date"
+                                  />
+                                </TableCell>
+                              )}
+
+                              {columnVisibility.collected && (
+                                <TableCell className="align-top">
+                                  {userRole === "collector" ? (
+                                    <div className="text-sm font-medium">
+                                      {(() => {
+                                        const totalCompleted = (item.user || []).reduce(
+                                          (sum: number, userEntry: any) => {
+                                            return sum + (userEntry.completed || 0);
+                                          },
+                                          0
+                                        );
+                                        return totalCompleted;
+                                      })()}
+                                    </div>
+                                  ) : (
+                                    <EditableCell
+                                      value={item.collected}
+                                      label="Collected"
+                                      onSave={(value) =>
+                                        updateItemField({
+                                          partyId: party.id,
+                                          internalItemId: item._internalId,
+                                          field: "collected",
+                                          value,
+                                        })
+                                      }
+                                    />
+                                  )}
+                                </TableCell>
+                              )}
+
+                              {columnVisibility.collectDate && (
+                                <TableCell className="align-top">
+                                  <DatePicker
+                                    date={item.collectDate}
+                                    onDateChange={(date) =>
+                                      updateItemField({
+                                        partyId: party.id,
+                                        internalItemId: item._internalId,
+                                        field: "collectDate",
+                                        value: date,
+                                      })
+                                    }
+                                    placeholder="Select collect date"
+                                  />
+                                </TableCell>
+                              )}
+
+                              {columnVisibility.sizes && (
+                                <TableCell className="align-top max-w-[300px]">
+                                  <div className="flex flex-wrap gap-1.5 p-2">
+                                    {item.sizes.length === 0 ? (
+                                      <span className="text-sm text-muted-foreground">
+                                        No sizes
+                                      </span>
+                                    ) : (
+                                      item.sizes.map((size: any, sizeIndex: number) => (
                                         <React.Fragment key={sizeIndex}>
-                                          <Badge
-                                            variant="secondary"
-                                            className="text-xs font-mono"
-                                          >
+                                          <Badge variant="secondary" className="text-xs font-mono">
                                             {size}
                                           </Badge>
-                                          {sizeIndex <
-                                            item.sizes.length - 1 && (
+                                          {sizeIndex < item.sizes.length - 1 && (
                                             <span className="text-muted-foreground self-center">
                                               |
                                             </span>
                                           )}
                                         </React.Fragment>
-                                      )
-                                    )
-                                  )}
-                                </div>
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    {userRole == "cutting" && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full mt-2"
-                                      >
-                                        Edit ({item.sizes.length} sizes)
-                                      </Button>
+                                      ))
                                     )}
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-[500px]">
-                                    <DialogHeader>
-                                      <DialogTitle>
-                                        Manage Sizes (Todo List)
-                                      </DialogTitle>
-                                      <DialogDescription>
-                                        Add, check off, or delete sizes. Checked
-                                        items are marked as complete.
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <SizesTodo
-                                      items={item.sizes}
-                                      onUpdate={(newSizes) =>
-                                        updateItemField({
-                                          partyId: party.id,
-                                          internalItemId: item._internalId,
-                                          field: "sizes",
-                                          value: newSizes,
-                                        })
-                                      }
-                                    />
-                                  </DialogContent>
-                                </Dialog>
-                              </TableCell>
-                            )}
+                                  </div>
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      {userRole === "cutting" && (
+                                        <Button variant="outline" size="sm" className="w-full mt-2">
+                                          Edit ({item.sizes.length} sizes)
+                                        </Button>
+                                      )}
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[500px]">
+                                      <DialogHeader>
+                                        <DialogTitle>Manage Sizes (Todo List)</DialogTitle>
+                                        <DialogDescription>
+                                          Add, check off, or delete sizes. Checked items are marked as
+                                          complete.
+                                        </DialogDescription>
+                                      </DialogHeader>
+                                      <SizesTodo
+                                        items={item.sizes}
+                                        onUpdate={(newSizes) =>
+                                          updateItemField({
+                                            partyId: party.id,
+                                            internalItemId: item._internalId,
+                                            field: "sizes",
+                                            value: newSizes,
+                                          })
+                                        }
+                                      />
+                                    </DialogContent>
+                                  </Dialog>
+                                </TableCell>
+                              )}
 
-                            {columnVisibility.users && (
-                              <TableCell className="text-center align-top">
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                      {item.user.length} users
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-[500px]">
-                                    <DialogHeader>
-                                      <DialogTitle>Manage Users</DialogTitle>
-                                      <DialogDescription>
-                                        Add or remove users associated with this
-                                        item.
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <UserManager
-                                      users={item.user}
-                                      sizes={item.sizes.map((s: any) => ({
-                                        value: s,
-                                        label: s.split(":")[0],
-                                      }))}
-                                      onUpdate={(newUsers) =>
-                                        updateItemField({
-                                          partyId: party.id,
-                                          internalItemId: item._internalId,
-                                          field: "user",
-                                          value: newUsers,
-                                        })
-                                      }
-                                    />
-                                  </DialogContent>
-                                </Dialog>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      }
-                    )
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
+                              {columnVisibility.users && (
+                                <TableCell className="text-center align-top">
+                                  {userRole === "collector" ? (
+                                    <Sheet>
+                                      <SheetTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          {item.user?.length || 0} users
+                                        </Button>
+                                      </SheetTrigger>
+                                      <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px]  lg:w-[540px]">
+                                        <SheetHeader>
+                                          <SheetTitle>Users & Completed Items</SheetTitle>
+                                          <SheetDescription>
+                                            View users and their completed items (read-only).
+                                          </SheetDescription>
+                                        </SheetHeader>
+                                        <div className="mt-6 space-y-4">
+                                          {item.user && item.user.length > 0 ? (
+                                            <div className="space-y-3">
+                                              {item.user.map((userEntry: any, index: number) => {
+                                                const getDisplayName = (user: any) => {
+                                                  return (
+                                                    user?.display_name ||
+                                                    user?.name ||
+                                                    user?.email ||
+                                                    user?.user ||
+                                                    "Unknown User"
+                                                  );
+                                                };
+                                                const getTotalCount = (entry: any) => {
+                                                  return (entry.sizes || []).reduce(
+                                                    (total: number, s: any) => total + (s.count || 0),
+                                                    0
+                                                  );
+                                                };
+                                                const totalItems = getTotalCount(userEntry);
+                                                const completedItems = userEntry.completed || 0;
 
-          {/* Pagination Controls */}
-          {/* {totalPages > 1 && (
-            <div className="flex items-center justify-between px-2 py-4 bg-background border-t">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                  {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
-                  {totalItems} entries
-                </span>
-              </div>
+                                                return (
+                                                  <div
+                                                    key={index}
+                                                    className="border rounded-lg p-4 space-y-2"
+                                                  >
+                                                    <div className="flex items-center justify-between">
+                                                      <h4 className="font-semibold text-sm">
+                                                        {getDisplayName(userEntry.user)}
+                                                      </h4>
+                                                      <Badge variant="secondary" className="text-xs">
+                                                        Menu: {userEntry.menuId || "N/A"}
+                                                      </Badge>
+                                                    </div>
+                                                    <div className="text-sm space-y-1">
+                                                      <div className="flex items-center justify-between">
+                                                        <span className="text-muted-foreground">
+                                                          Completed:
+                                                        </span>
+                                                        <span className="font-medium">
+                                                          {completedItems} / {totalItems}
+                                                        </span>
+                                                      </div>
+                                                      {userEntry.sizes && userEntry.sizes.length > 0 && (
+                                                        <div className="mt-2">
+                                                          <p className="text-xs text-muted-foreground mb-1">
+                                                            Sizes:
+                                                          </p>
+                                                          <div className="flex flex-wrap gap-1">
+                                                            {userEntry.sizes.map(
+                                                              (sizeEntry: any, sizeIndex: number) => (
+                                                                <Badge
+                                                                  key={sizeIndex}
+                                                                  variant="outline"
+                                                                  className="text-xs"
+                                                                >
+                                                                  {sizeEntry.size} × {sizeEntry.count}
+                                                                </Badge>
+                                                              )
+                                                            )}
+                                                          </div>
+                                                        </div>
+                                                      )}
+                                                      {userEntry.logs && (
+                                                        <p className="text-[10px] text-muted-foreground mt-2">
+                                                          {userEntry.logs}
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          ) : (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                              <p className="text-sm">No users assigned</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </SheetContent>
+                                    </Sheet>
+                                  ) : (
+                                    <Sheet>
+                                      <SheetTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          {item.user?.length || 0} users
+                                        </Button>
+                                      </SheetTrigger>
+                                      <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px]  lg:w-[540px]">
+                                        <SheetHeader>
+                                          <SheetTitle>Users & Completed Items</SheetTitle>
+                                          <SheetDescription>
+                                            View users and their completed items (can edit).
+                                          </SheetDescription>
+                                        </SheetHeader>
+                                        <UserManager
+                                          users={item.user || []}
+                                          sizes={item.sizes.map((s: any) => ({
+                                            value: s,
+                                            label: s.split(":")[0],
+                                          }))}
+                                          onUpdate={(newUsers) =>
+                                            updateItemField({
+                                              partyId: party.id,
+                                              internalItemId: item._internalId,
+                                              field: "user",
+                                              value: newUsers,
+                                            })
+                                          }
+                                        />
+                                      </SheetContent>
+                                    </Sheet>
+                                  )}
+                                </TableCell>
+                              )}
 
-              <div className="flex items-center gap-2">
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 per page</SelectItem>
-                    <SelectItem value="25">25 per page</SelectItem>
-                    <SelectItem value="50">50 per page</SelectItem>
-                    <SelectItem value="100">100 per page</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                  >
-                    First
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-
-                  <span className="text-sm px-2">
-                    Page {currentPage} of {totalPages}
-                  </span>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                    }
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                  >
-                    Last
-                  </Button>
+                              {columnVisibility.print && (
+                                <TableCell className="text-center align-top">
+                                  <ReceiptViewModal data={parties} filter={party.party_name} />
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             </div>
-          )} */}
-        </div>
-      )}
+          )}
 
-      {/* Fixed Mobile Bottom Bar */}
-      <div className="flex sm:hidden items-center justify-center h-16 w-full flex-row gap-4 mb-6 sticky bottom-0 bg-background z-20">
-        <ButtonGroup>
-          <Button onClick={handleSaveData} variant="outline">
-            <SaveIcon className="h-5 w-5" />
-            Save Data
-          </Button>
-          <Select
-            value={userRole}
-            onValueChange={(value: UserRole) => setUserRole(value)}
-          >
-            <SelectTrigger id="role-select" className="w-[180px]">
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="cutting">Cutting</SelectItem>
-              <SelectItem value="distributor">Distributor</SelectItem>
-            </SelectContent>
-          </Select>
-        </ButtonGroup>
+          {/* Mobile Card View with Horizontal Scrolling */}
+          {parties.length > 0 && (
+            <div className="md:hidden">
+              <div ref={scrollRef} className="overflow-x-auto pb-4 -mx-6 px-6">
+                <div className="flex-col gap-4">
+                  {parties.length === 0 ? (
+                    <div className="w-full text-center py-8 text-muted-foreground">
+                      No results found for "{searchQuery}"
+                    </div>
+                  ) : (
+                    parties.map((data:any,index) => {
+                      return <div className="flex">
+                        {
+                          data.items.map((itemData:any,itemIndex:number)=>{
+                            return  <MobileItemCard
+                            key={itemData._internalId}
+                            party={data}
+                            item={itemData}
+                            partyIndex={index}
+                            itemIndex={itemIndex}
+                          />
+                          })
+                        }
+                      </div>
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fixed Mobile Bottom Bar */}
+          <div className="flex sm:hidden items-center justify-center h-16 w-full flex-row gap-4 mb-6 sticky bottom-0 bg-background z-20">
+            <ButtonGroup>
+              <Button onClick={handleSaveData} variant="outline">
+                <SaveIcon className="h-5 w-5" />
+                Save Data
+              </Button>
+              <Select
+                value={userRole}
+                onValueChange={(value: UserRole) => setUserRole(value)}
+              >
+                <SelectTrigger id="role-select" className="w-[180px]">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {role.map((r: any) => (
+                    <SelectItem key={r} value={r}>
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </ButtonGroup>
+          </div>
       </div>
+
+      {/* <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {role.includes("admin") && (
+          <TabsList className="grid w-[240px] ml-auto grid-cols-2 mb-6">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="access-control">Access Control</TabsTrigger>
+          </TabsList>
+        )}
+
+        <TabsContent value="dashboard" className="space-y-4">
+         
+        </TabsContent>
+
+        <TabsContent value="access-control" className="space-y-4">
+          <AccessControl />
+        </TabsContent>
+      </Tabs> */}
     </div>
   );
 }

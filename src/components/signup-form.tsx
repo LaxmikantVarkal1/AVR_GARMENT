@@ -14,10 +14,12 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
 import { useAtom } from "jotai"
 import { isLogin, userAtom, authLoadingAtom, authErrorAtom } from "@/store/atoms"
 import { useState, type FormEvent } from "react"
 import { authService } from "@/service/authService"
+import { Chrome } from "lucide-react"
 
 export function SignupForm({
   className,
@@ -27,7 +29,6 @@ export function SignupForm({
   const [, setUser] = useAtom(userAtom)
   const [isLoading, setIsLoading] = useAtom(authLoadingAtom)
   const [authError, setAuthError] = useAtom(authErrorAtom)
-  
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -86,6 +87,7 @@ export function SignupForm({
       })
       
       setUser(user)
+     
       console.log("Signup successful:", user)
       
     } catch (error) {
@@ -97,6 +99,20 @@ export function SignupForm({
       )
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignup = async () => {
+    try {
+      setAuthError(null)
+      await authService.loginWithGoogle()
+    } catch (error) {
+      console.error("Google signup error:", error)
+      setAuthError(
+        error instanceof Error 
+          ? error.message 
+          : "Failed to sign up with Google. Please try again."
+      )
     }
   }
 
@@ -221,6 +237,30 @@ export function SignupForm({
                   ) : (
                     "Sign up"
                   )}
+                </Button>
+              </Field>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <Field>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGoogleSignup}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  <Chrome className="mr-2 h-4 w-4" />
+                  Continue with Google
                 </Button>
                 <FieldDescription className="text-center">
                   Already have an account?{" "}

@@ -1,10 +1,11 @@
 // types/auth.types.ts
-export type UserRole = 'admin' | 'cutting' | 'distributor' | 'users';
+export type UserRole = 'admin' | 'cutting' | 'distributor' | 'collector' | 'users';
 
 export interface UserProfile {
   id: string;
   email: string;
   roles: UserRole[];
+  display_name?: string;
   created_at: string;
   email_confirmed: boolean | null;
 }
@@ -18,6 +19,7 @@ export interface AuthState {
 export interface LoginCredentials {
   email: string;
   password: string;
+  display_name?: string
   roles?: UserRole[];
 }
 

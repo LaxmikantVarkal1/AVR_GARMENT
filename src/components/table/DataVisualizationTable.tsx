@@ -467,7 +467,7 @@ export default function DataVisualizationTable() {
                               </DialogHeader>
                               <UserManager
                                sizes={[]}
-                                users={item.user}
+                                users={item.user as any}
                                 onUpdate={(newUsers) =>
                                   updateItemField({
                                     partyId: party.id,

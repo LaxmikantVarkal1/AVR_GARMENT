@@ -53,6 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       const userProfile = await authService.login(credentials);
       setUser(userProfile);
+      window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
       throw err;
@@ -80,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       setError(null);
       await authService.logout();
+      window.location.reload();
       setUser(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Logout failed');

@@ -15,10 +15,12 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
 import { useAtom } from "jotai"
 import { isLogin, userAtom, authLoadingAtom, authErrorAtom, authenticated } from "@/store/atoms"
 import { useState, type FormEvent } from "react"
 import { authService } from "@/service/authService"
+import { Chrome } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -29,7 +31,6 @@ export function LoginForm({
   const [, setUser] = useAtom(userAtom)
   const [isLoading, setIsLoading] = useAtom(authLoadingAtom)
   const [authError, setAuthError] = useAtom(authErrorAtom)
-  
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState<{
@@ -70,13 +71,14 @@ export function LoginForm({
       setIsLoading(true)
       
       // Only call login - don't call getAllUsers()
-      const user = await authService.login({ email, password })
+      const user:any = await authService.login({ email, password })
+      user["display_name"] = user.email.split("@")[0]
       setUser(user)
       setIsAuthenticated(true)
+      window.location.reload()
       console.log("Login successful:", user)
-      
-      // Optional: Navigate to dashboard or home page here
-      // Example: navigate('/dashboard')
+    
+
       
     } catch (error) {
       console.error("Login error:", error)
@@ -87,6 +89,20 @@ export function LoginForm({
       )
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    try {
+      setAuthError(null)
+      await authService.loginWithGoogle()
+    } catch (error) {
+      console.error("Google login error:", error)
+      setAuthError(
+        error instanceof Error 
+          ? error.message 
+          : "Failed to login with Google. Please try again."
+      )
     }
   }
 
@@ -159,6 +175,30 @@ export function LoginForm({
                   className="w-full"
                 >
                   {isLoading ? "Signing in..." : "Login"}
+                </Button>
+              </Field>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <Field>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  <Chrome className="mr-2 h-4 w-4" />
+                  Continue with Google
                 </Button>
                 <FieldDescription className="text-center">
                   Don&apos;t have an account?{" "}
