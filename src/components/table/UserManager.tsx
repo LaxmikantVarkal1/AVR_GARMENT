@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, User2, Package, Ruler, Hash, MoreVertical, Edit, AlertCircle, X } from "lucide-react";
+import { Plus, Trash2, User2, Package, Ruler, Hash, MoreVertical, Edit, AlertCircle, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,12 +44,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Slider } from "@/components/ui/slider";
+// import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+// import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { allUsersAtom } from "@/store/atoms";
 import { useAtom } from "jotai";
 import { authService } from "@/service/authService";
+import { ButtonGroup } from "../ui/button-group";
+import NumberSpinner from "../Numberfield";
+import { SizesList } from "@/components/table/SizesList";
 
 // Size selection with count
 interface SizeSelection {
@@ -77,9 +81,9 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [allUsers] = useAtom(allUsersAtom);
-  
+
   const [openUserAdd, setOpenUserAdd] = useState(false);
-  const [,setOpenUserEdit] = useState(false);
+  const [, setOpenUserEdit] = useState(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
@@ -92,12 +96,12 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     display_name?: string;
   } | null>(null);
   const [menuId, setMenuId] = useState("");
-  
+
   const [selectedSizes, setSelectedSizes] = useState<SizeSelection[]>([]);
-  
+
   const [validationError, setValidationError] = useState<string>("");
   const [completedCount, setCompletedCount] = useState<number>(0);
-  
+
   // Optimistic state for smooth slider interaction
   const [localCompletedValues, setLocalCompletedValues] = useState<{ [key: number]: number }>({});
   const debounceTimeoutRef = useRef<{ [key: number]: ReturnType<typeof setTimeout> }>({});
@@ -128,6 +132,12 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     const editorName = editor?.name || editor?.email || "Unknown";
     return `Last update ${when} ${editorName}`;
   };
+
+  useEffect(() => {
+    if (dialogOpen) {
+      resetForm();
+    }
+  }, [dialogOpen]);
 
   // Helper function to get display name
   const getDisplayName = (user: { name?: string; email?: string; display_name?: string }): string => {
@@ -181,8 +191,8 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
   const handleCountChange = (sizeValue: string, value: string) => {
     const numValue = parseInt(value) || 0;
     const remaining = getRemainingCountForSize(sizeValue);
-    
-    setSelectedSizes(selectedSizes.map(s => 
+
+    setSelectedSizes(selectedSizes.map(s =>
       s.sizeValue === sizeValue ? { ...s, count: numValue } : s
     ));
 
@@ -266,8 +276,8 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
 
     const user: any = await authService.getCurrentUser();
 
-    console.log("selectedUser",selectedUser)
-    
+    console.log("selectedUser", selectedUser)
+
     onUpdate([
       ...users,
       {
@@ -283,7 +293,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
         logs: buildLogLine(user)
       },
     ]);
-    
+
     resetForm();
     setDialogOpen(false);
   };
@@ -295,7 +305,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     setSelectedUser(entry.user);
     setMenuId(entry.menuId);
     setCompletedCount(entry.completed ?? 0);
-    
+
     // Convert entry sizes back to SizeSelection format
     const sizeSelections: SizeSelection[] = entry.sizes.map(s => {
       const matchingSizeOption = sizes.find(option => {
@@ -307,7 +317,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
         count: s.count
       };
     }).filter(s => s.sizeValue !== "");
-    
+
     setSelectedSizes(sizeSelections);
     setEditDialogOpen(true);
   };
@@ -368,7 +378,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
       logs: buildLogLine(user)
     };
     onUpdate(updatedUsers);
-    
+
     resetForm();
     setEditIndex(null);
     setEditDialogOpen(false);
@@ -413,10 +423,10 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
   };
 
   const isFormValid =
-    selectedUser && 
-    menuId.trim() && 
-    selectedSizes.length > 0 && 
-    selectedSizes.every(s => s.count > 0) && 
+    selectedUser &&
+    menuId.trim() &&
+    selectedSizes.length > 0 &&
+    selectedSizes.every(s => s.count > 0) &&
     !validationError;
 
   // Get total item count for an entry
@@ -425,41 +435,41 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
   };
 
   // Update local state immediately for smooth UI
-  const handleCompletedInlineChange = (index: number, value: number) => {
-    const entry = users[index];
-    if (!entry) {
-      return;
-    }
-    const total = getTotalCount(entry);
-    const clamped = Math.max(0, Math.min(total, value));
-    
-    // Update local state immediately for smooth slider
-    setLocalCompletedValues(prev => ({
-      ...prev,
-      [index]: clamped
-    }));
+  // const handleCompletedInlineChange = (index: number, value: number) => {
+  //   const entry = users[index];
+  //   if (!entry) {
+  //     return;
+  //   }
+  //   const total = getTotalCount(entry);
+  //   const clamped = Math.max(0, Math.min(total, value));
 
-    // Clear existing timeout for this index
-    if (debounceTimeoutRef.current[index]) {
-      clearTimeout(debounceTimeoutRef.current[index]);
-    }
+  //   // Update local state immediately for smooth slider
+  //   setLocalCompletedValues(prev => ({
+  //     ...prev,
+  //     [index]: clamped
+  //   }));
 
-    // Debounce the actual save operation
-    debounceTimeoutRef.current[index] = setTimeout(async () => {
-      const user: any = await authService.getCurrentUser();
-      const updated = [...users];
-      updated[index] = { ...entry, completed: clamped, logs: buildLogLine(user) };
-      onUpdate(updated);
-      
-      // Clear local state after save
-      setLocalCompletedValues(prev => {
-        const next = { ...prev };
-        delete next[index];
-        return next;
-      });
-      delete debounceTimeoutRef.current[index];
-    }, 300); // 300ms debounce
-  };
+  //   // Clear existing timeout for this index
+  //   if (debounceTimeoutRef.current[index]) {
+  //     clearTimeout(debounceTimeoutRef.current[index]);
+  //   }
+
+  //   // Debounce the actual save operation
+  //   debounceTimeoutRef.current[index] = setTimeout(async () => {
+  //     const user: any = await authService.getCurrentUser();
+  //     const updated = [...users];
+  //     updated[index] = { ...entry, completed: clamped, logs: buildLogLine(user) };
+  //     onUpdate(updated);
+
+  //     // Clear local state after save
+  //     setLocalCompletedValues(prev => {
+  //       const next = { ...prev };
+  //       delete next[index];
+  //       return next;
+  //     });
+  //     delete debounceTimeoutRef.current[index];
+  //   }, 300); // 300ms debounce
+  // };
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -477,7 +487,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     }
     const total = getTotalCount(entry);
     const newValue = checked ? total : 0;
-    
+
     // Update local state immediately
     setLocalCompletedValues(prev => ({
       ...prev,
@@ -494,7 +504,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     const updated = [...users];
     updated[index] = { ...entry, completed: newValue, logs: buildLogLine(user) };
     onUpdate(updated);
-    
+
     // Clear local state after save
     setLocalCompletedValues(prev => {
       const next = { ...prev };
@@ -503,10 +513,101 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     });
   };
 
+  const handlePrintCard = (entry: UserEntry) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Receipt - ${getDisplayName(entry.user)}</title>
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 15px; max-width: 320px; margin: 0 auto; color: #000; }
+            .header { text-align: center; margin-bottom: 0px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .title { font-weight: bold; font-size: 18px; margin-bottom: 5px; text-transform: uppercase; }
+            .subtitle { font-size: 11px; color: #555; }
+            
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            td { padding: 4px 0; vertical-align: top; font-size: 12px; }
+            .label { font-weight: bold; text-align: left; width: 40%; }
+            .value { text-align: right; width: 60%; }
+            
+            .divider { border-top: 1px dashed #000; margin: 10px 0; }
+            
+            .sizes-section { margin-top: 10px; }
+            .sizes-title { font-weight: bold; font-size: 12px; margin-bottom: 5px; text-decoration: underline; }
+            .size-item { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
+            
+            .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 5px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">WORK ASSIGNMENT</div>
+            <div class="subtitle">AVR Garment System</div>
+            <div class="subtitle" style="margin-top:2px">${new Date().toLocaleString()}</div>
+          </div>
+          
+          <table>
+            <tr>
+              <td class="label">Assigned User:</td>
+              <td class="value"><b>${getDisplayName(entry.user)}</b></td>
+            </tr>
+            <tr>
+              <td class="label">Menu ID:</td>
+              <td class="value">${entry.menuId}</td>
+            </tr>
+            <tr>
+              <td class="label">Assigner:</td>
+              <td class="value">${entry.assigner || "Admin"}</td>
+            </tr>
+          </table>
+
+          <div class="divider"></div>
+
+          <table>
+            <tr>
+              <td class="label">Total Quantity:</td>
+              <td class="value" style="font-size: 14px; font-weight: bold;">${getTotalCount(entry)}</td>
+            </tr>
+            <tr>
+              <td class="label">Completed:</td>
+              <td class="value">${entry.completed || 0}</td>
+            </tr>
+          </table>
+
+          <div class="sizes-section">
+            <div class="sizes-title">SIZE BREAKDOWN</div>
+            <div style="border: 1px solid #000; padding: 5px; border-radius: 4px;">
+              ${entry.sizes.map(s => `
+                <div class="size-item">
+                  <span>Size: <b>${s.size}</b></span>
+                  <span>Qty: <b>${s.count}</b></span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+
+          <div class="footer">
+            Please complete the assigned items.<br/>
+            Signature: ________________
+          </div>
+          
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
-    <div className="w-full m-2 mt-5 overflow-scroll">
+    <div className="w-full h-full flex flex-col p-1">
       {/* Header with Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 shrink-0">
         <div>
           <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
             User Entries
@@ -524,13 +625,13 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
         {/* Add Entry Sheet */}
         <Sheet open={dialogOpen} onOpenChange={handleDialogClose}>
           <SheetTrigger asChild>
-            <Button size="sm" className="w-full sm:w-auto">
+            <Button size="sm" className="w-auto">
               <Plus className="mr-2 h-4 w-4" />
               Add Entry
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px]  lg:w-[540px] flex flex-col">
-            <SheetHeader>
+          <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px] lg:w-[540px] p-4 sm:p-6 flex flex-col gap-4 overflow-hidden">
+            <SheetHeader className="flex-shrink-0">
               <SheetTitle>Add New Entry</SheetTitle>
               <SheetDescription>
                 Fill in all the details and select multiple sizes with quantities.
@@ -538,13 +639,13 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
             </SheetHeader>
 
             {validationError && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="flex-shrink-0">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{validationError}</AlertDescription>
               </Alert>
             )}
 
-            <div className="space-y-4 p-4 flex-1 overflow-y-auto">
+            <div className="space-y-4 flex-1 overflow-y-auto overflow-x-hidden -mx-4 px-4 sm:-mx-6 sm:px-6">
               {/* User Combobox */}
               <div className="space-y-1.5">
                 <Label htmlFor="user-select" className="flex items-center gap-1.5 text-sm">
@@ -613,7 +714,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                                 </svg>
                               </div>
                               <div className="flex flex-col">
-                                <span className="font-medium">{user?.display_name|| user?.email}</span>
+                                <span className="font-medium">{user?.display_name || user?.email}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {user.email || user.id}
                                 </span>
@@ -665,7 +766,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                     const usedCount = getUsedCountForSize(size.value);
                     const remaining = maxCount - usedCount;
                     const isSelected = isSizeSelected(size.value);
-                    
+
                     return (
                       <div
                         key={size.value}
@@ -678,7 +779,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                         <Checkbox
                           id={`size-${size.value}`}
                           checked={isSelected}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             handleSizeToggle(size.value, checked as boolean)
                           }
                           disabled={remaining <= 0 && !isSelected}
@@ -714,9 +815,9 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                     {selectedSizes.map((sizeSelection) => {
                       const { size: sizeLabel } = parseSizeValue(sizeSelection.sizeValue);
                       const remaining = getRemainingCountForSize(sizeSelection.sizeValue);
-                      
+
                       return (
-                        <Card key={sizeSelection.sizeValue} className="p-3">
+                        <Card key={sizeSelection.sizeValue} className="m-3">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="shrink-0">
                               {sizeLabel}
@@ -727,7 +828,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                                 min="1"
                                 max={remaining}
                                 value={sizeSelection.count}
-                                onChange={(e) => 
+                                onChange={(e) =>
                                   handleCountChange(sizeSelection.sizeValue, e.target.value)
                                 }
                                 placeholder="Qty"
@@ -761,14 +862,13 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                     Completed Items
                   </Label>
                   <div className="relative">
-                    <Input
-                      type="number"
+                    <NumberSpinner
+                      label={null}               // or a label string if you want
                       min={0}
+                      onValueChange={(value: any) => setCompletedCount(value)}
                       max={selectedSizes.reduce((sum, s) => sum + s.count, 0)}
                       value={completedCount}
-                      onChange={(e) => setCompletedCount(parseInt(e.target.value) || 0)}
-                      placeholder="0"
-                      className="h-9 text-sm pr-24"
+                      className="h-9 text-sm pr-24" // you can still use Tailwind on the root
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                       / {selectedSizes.reduce((sum, s) => sum + s.count, 0)}
@@ -778,7 +878,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
               )}
             </div>
 
-            <SheetFooter className="flex flex-row gap-2 pt-4">
+            <SheetFooter className="flex flex-row gap-2 pt-4 flex-shrink-0">
               <Button
                 type="button"
                 variant="outline"
@@ -799,8 +899,8 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
 
       {/* Edit Sheet - Same structure as Add Sheet */}
       <Sheet open={editDialogOpen} onOpenChange={handleEditDialogClose}>
-        <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px]  lg:w-[540px] flex flex-col p-2.5">
-          <SheetHeader>
+        <SheetContent side="right" className="w-full sm:w-[380px] md:w-[480px] lg:w-[540px] p-4 sm:p-6 flex flex-col gap-4 overflow-hidden">
+          <SheetHeader className="flex-shrink-0">
             <SheetTitle>Edit Entry</SheetTitle>
             <SheetDescription>
               Update the details and sizes for this entry.
@@ -808,13 +908,13 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
           </SheetHeader>
 
           {validationError && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="flex-shrink-0">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{validationError}</AlertDescription>
             </Alert>
           )}
 
-          <div className="space-y-4 py-4 flex-1 overflow-y-auto">
+          <div className="space-y-4 flex-1 overflow-y-auto overflow-x-hidden -mx-4 px-4 sm:-mx-6 sm:px-6">
             {/* User Combobox */}
             <div className="space-y-1.5">
               <Label htmlFor="edit-user-select" className="flex items-center gap-1.5 text-sm">
@@ -822,81 +922,81 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                 Select User
               </Label>
               <Sheet open={openUserAdd} onOpenChange={setOpenUserAdd}>
-  <SheetTrigger asChild>
-    <Button
-      id="user-select"
-      variant="outline"
-      role="combobox"
-      aria-expanded={openUserAdd}
-      className={cn(
-        "w-full justify-between h-9 text-sm",
-        !selectedUser && "text-muted-foreground"
-      )}
-    >
-      {selectedUser ? getDisplayName(selectedUser as any) : "Choose a user..."}
-      <User2 className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-    </Button>
-  </SheetTrigger>
-  <SheetContent side="right" className="max-w-xs w-full flex flex-col">
-    <SheetHeader>
-      <SheetTitle>Select User</SheetTitle>
-      <SheetDescription>
-        Search and select a user to assign.
-      </SheetDescription>
-    </SheetHeader>
-    <div className="flex-1 overflow-y-auto py-2">
-      <Command>
-        <CommandInput placeholder="Search users..." className="h-8" />
-        <CommandList>
-          <CommandEmpty>No user found.</CommandEmpty>
-          <CommandGroup>
-            {allUsers.map((user: any) => (
-              <CommandItem
-                key={user.id}
-                value={getDisplayName(user)}
-                onSelect={() => {
-                  setSelectedUser(user);
-                  setOpenUserAdd(false);
-                  setValidationError("");
-                }}
-                className="cursor-pointer text-sm"
-              >
-                <div
-                  className={cn(
-                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                    selectedUser?.id === user.id
-                      ? "bg-primary text-primary-foreground"
-                      : "opacity-50 [&_svg]:invisible"
-                  )}
-                >
-                  <svg
-                    className="h-3 w-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={3}
+                <SheetTrigger asChild>
+                  <Button
+                    id="user-select"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openUserAdd}
+                    className={cn(
+                      "w-full justify-between h-9 text-sm",
+                      !selectedUser && "text-muted-foreground"
+                    )}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-medium">{getDisplayName(user)}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {user.email || user.id}
-                  </span>
-                </div>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    </div>
-  </SheetContent>
-</Sheet>
+                    {selectedUser ? getDisplayName(selectedUser as any) : "Choose a user..."}
+                    <User2 className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="max-w-xs w-full flex flex-col">
+                  <SheetHeader>
+                    <SheetTitle>Select User</SheetTitle>
+                    <SheetDescription>
+                      Search and select a user to assign.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto py-2">
+                    <Command>
+                      <CommandInput placeholder="Search users..." className="h-8" />
+                      <CommandList>
+                        <CommandEmpty>No user found.</CommandEmpty>
+                        <CommandGroup>
+                          {allUsers.map((user: any) => (
+                            <CommandItem
+                              key={user.id}
+                              value={getDisplayName(user)}
+                              onSelect={() => {
+                                setSelectedUser(user);
+                                setOpenUserAdd(false);
+                                setValidationError("");
+                              }}
+                              className="cursor-pointer text-sm"
+                            >
+                              <div
+                                className={cn(
+                                  "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                  selectedUser?.id === user.id
+                                    ? "bg-primary text-primary-foreground"
+                                    : "opacity-50 [&_svg]:invisible"
+                                )}
+                              >
+                                <svg
+                                  className="h-3 w-3"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={3}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M5 13l4 4L19 7"
+                                  />
+                                </svg>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{getDisplayName(user)}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {user.email || user.id}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
 
             <div className="space-y-1.5">
@@ -905,16 +1005,26 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                 Menu ID
               </Label>
               <div className="relative">
-                <Input
-                  id="edit-menu-id"
-                  value={menuId}
-                  onChange={(e) => {
-                    setMenuId(e.target.value);
-                    setValidationError("");
-                  }}
-                  placeholder="e.g., MENU-001"
-                  className="pr-9 h-9 text-sm"
-                />
+                <ButtonGroup>
+                  <Button variant="outline" className="h-9 text-sm">
+                    <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                  <Input
+                    id="edit-menu-id"
+                    value={menuId}
+                    onChange={(e) => {
+                      setMenuId(e.target.value);
+                      setValidationError("");
+                    }}
+                    placeholder="e.g., MENU-001"
+                    className="pr-9 h-9 text-sm"
+                  />
+
+                  <Button variant="outline" className="h-9 text-sm">
+                    <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+
+                </ButtonGroup>
                 <Hash className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               </div>
             </div>
@@ -936,7 +1046,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                   const usedCount = getUsedCountForSize(size.value, editIndex !== null ? editIndex : undefined);
                   const remaining = maxCount - usedCount;
                   const isSelected = isSizeSelected(size.value);
-                  
+
                   return (
                     <div
                       key={size.value}
@@ -948,7 +1058,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                       <Checkbox
                         id={`edit-size-${size.value}`}
                         checked={isSelected}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           handleSizeToggle(size.value, checked as boolean)
                         }
                       />
@@ -980,7 +1090,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                   {selectedSizes.map((sizeSelection) => {
                     const { size: sizeLabel } = parseSizeValue(sizeSelection.sizeValue);
                     const remaining = getRemainingCountForSize(sizeSelection.sizeValue);
-                    
+
                     return (
                       <Card key={sizeSelection.sizeValue} className="p-3">
                         <div className="flex items-center gap-2">
@@ -993,7 +1103,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                               min="1"
                               max={remaining}
                               value={sizeSelection.count}
-                              onChange={(e) => 
+                              onChange={(e) =>
                                 handleCountChange(sizeSelection.sizeValue, e.target.value)
                               }
                               placeholder="Qty"
@@ -1019,6 +1129,8 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                 </div>
               </div>
             )}
+
+
             {/* Completed Items Input */}
             {selectedSizes.length > 0 && (
               <div className="space-y-1.5">
@@ -1027,15 +1139,15 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                   Completed Items
                 </Label>
                 <div className="relative">
-                  <Input
-                    type="number"
+                  <NumberSpinner
+                    label={null}               // or a label string if you want
                     min={0}
+                    onValueChange={(value: any) => setCompletedCount(value)}
                     max={selectedSizes.reduce((sum, s) => sum + s.count, 0)}
                     value={completedCount}
-                    onChange={(e) => setCompletedCount(parseInt(e.target.value) || 0)}
-                    placeholder="0"
-                    className="h-9 text-sm pr-24"
+                    className="h-9 text-sm pr-24" // you can still use Tailwind on the root
                   />
+
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                     / {selectedSizes.reduce((sum, s) => sum + s.count, 0)}
                   </span>
@@ -1044,7 +1156,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
             )}
           </div>
 
-          <SheetFooter className="flex flex-row gap-2 pt-4">
+          <SheetFooter className="flex flex-row gap-2 pt-4 flex-shrink-0">
             <Button
               type="button"
               variant="outline"
@@ -1094,144 +1206,170 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
       </AlertDialog>
 
       {/* Entries List */}
-      <ScrollArea className="h-[calc(100vh-12rem)] w-full rounded-md">
-        <div className="space-y-2 pr-4 w-[calc(100wv-40px)]">
-          {users.length === 0 ? (
-            <Card className="w-[300px]">
-              <CardContent className="flex flex-col items-center justify-center py-10">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-3">
-                  <Package className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h4 className="font-semibold text-sm mb-1.5">No entries yet</h4>
-                <p className="text-xs text-muted-foreground text-center max-w-xs px-4">
-                  Get started by adding your first user entry with the button
-                  above
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            users.map((entry: UserEntry, index: number) => (
-              <Card
-                key={index}
-                className="group hover:shadow-md transition-shadow"
-              >
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
-                      <User2 className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-semibold text-sm leading-none mb-0.5 truncate">
+      {/* Entries List */}
+      {/* Entries List */}
+      <div className="w-full flex-1 rounded-md border bg-muted/20 overflow-y-auto min-h-0">
+        <div className="p-4 pb-20">
+          <div>
+            {users.length === 0 ? (
+              <Card className="w-full">
+                <CardContent className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-3">
+                    <Package className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h4 className="font-semibold text-sm mb-1.5">
+                    No entries yet
+                  </h4>
+                  <p className="text-xs text-muted-foreground max-w-xs">
+                    Get started by adding your first user entry with the button above
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              users.map((entry: UserEntry, index: number) => (
+                <Card
+                  key={index}
+                  className="
+              group transition-all
+              hover:shadow-md
+              border-l-4 border-l-primary/0 hover:border-l-primary
+              mb-4
+            "
+                >
+                  <CardContent className="p-4 space-y-3">
+                    {/* Header Section */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+                          <User2 className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-sm leading-none mb-1 truncate">
                             {getDisplayName(entry.user)}
                           </h4>
-                          {/* <p className="text-xs text-muted-foreground truncate">
-                            {entry.user.email || entry.user.id}
-                          </p> */}
-                        </div>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 shrink-0"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem
-                              onClick={() => handleEditClick(index)}
-                              className="cursor-pointer"
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(index)}
-                              className="cursor-pointer text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      <Separator className="my-1.5" />
-                      <div className="space-y-2 w-[220px]">
-                        <div className="flex items-center gap-2 text-xs">
-                          <Hash className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">Menu:</span>
-                          <span className="font-medium">{entry.menuId}</span>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Package className="h-3 w-3" />
-                            Sizes & Quantities:
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {entry.sizes.map((sizeEntry, sizeIndex) => (
-                              <Badge 
-                                key={sizeIndex} 
-                                variant="secondary" 
-                                className="text-xs"
-                              >
-                                {sizeEntry.size} × {sizeEntry.count}
-                              </Badge>
-                            ))}
-                            <Badge variant="outline" className="text-xs">
-                              Total: {getTotalCount(entry)}
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Badge className="h-5 px-1.5 font-normal text-[10px]">
+                              {entry.menuId}
                             </Badge>
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-xs">
-                            <Package className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">Completed:</span>
-                            <span className="font-medium">
-                              {localCompletedValues[index] !== undefined ? localCompletedValues[index] : entry.completed ?? 0} / {getTotalCount(entry)}
-                            </span>
-                          </div>
-                          {/* <div className="w-full px-1">
-                            <Slider
-                              value={[localCompletedValues[index] !== undefined ? localCompletedValues[index] : entry.completed ?? 0]}
-                              onValueChange={(values) => handleCompletedInlineChange(index, values[0])}
-                              min={0}
-                              max={getTotalCount(entry)}
-                              step={1}
-                              className="w-full"
-                              aria-label="Completed items"
-                            />
-                          </div> */}
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id={`all-completed-${index}`}
-                              checked={(localCompletedValues[index] !== undefined ? localCompletedValues[index] : entry.completed ?? 0) >= getTotalCount(entry) && getTotalCount(entry) > 0}
-                              onCheckedChange={(checked) => handleToggleAllCompleted(index, Boolean(checked))}
-                            />
-                            <Label
-                              htmlFor={`all-completed-${index}`}
-                              className="text-xs text-muted-foreground cursor-pointer"
-                            >
-                              Mark all completed
-                            </Label>
-                          </div>
-                          {entry.logs && (
-                            <p className="text-[10px] text-muted-foreground">{entry.logs}</p>
-                          )}
+                      </div>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem
+                            onClick={() => handleEditClick(index)}
+                            className="cursor-pointer"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handlePrintCard(entry)}
+                            className="cursor-pointer"
+                          >
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print Receipt
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(index)}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Progress Section */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium">
+                          {(localCompletedValues[index] ?? entry.completed ?? 0)} /{" "}
+                          {getTotalCount(entry)}
+                        </span>
+                      </div>
+                      <Progress
+                        value={
+                          ((
+                            localCompletedValues[index] ?? entry.completed ?? 0
+                          ) /
+                            Math.max(getTotalCount(entry), 1)) *
+                          100
+                        }
+                        className="h-2"
+                      />
+                    </div>
+
+                    <Separator />
+
+                    {/* Details Section */}
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium flex items-center gap-1.5 text-muted-foreground">
+                          <Package className="h-3.5 w-3.5" />
+                          Sizes &amp; Quantities
+                        </p>
+                        <SizesList items={entry.sizes} />
+                        <div className="flex justify-end mt-1">
+                          <Badge variant="outline" className="text-[10px] h-5">
+                            Total: {getTotalCount(entry)} items
+                          </Badge>
                         </div>
                       </div>
+
+                      {/* Footer Actions */}
+                      <div className="pt-1 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`all-completed-${index}`}
+                            checked={
+                              (localCompletedValues[index] ??
+                                entry.completed ??
+                                0) >= getTotalCount(entry) &&
+                              getTotalCount(entry) > 0
+                            }
+                            onCheckedChange={(checked) =>
+                              handleToggleAllCompleted(index, Boolean(checked))
+                            }
+                          />
+                          <Label
+                            htmlFor={`all-completed-${index}`}
+                            className="text-xs text-muted-foreground cursor-pointer select-none"
+                          >
+                            Mark all completed
+                          </Label>
+                        </div>
+
+
+                      </div>
+                      {entry.logs && (
+                        <p className="text-[10px] text-muted-foreground italic truncate max-w-auto text-left">
+                          {entry.logs}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </div>
-      </ScrollArea>
-    </div>
+      </div>
+
+    </div >
   );
 }

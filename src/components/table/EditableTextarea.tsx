@@ -20,12 +20,14 @@ interface EditableTextareaProps {
   value: string;
   onSave: (newValue: string) => void;
   label: string;
+  disabled?: boolean;
 }
 
 export function EditableTextarea({
   value,
   onSave,
   label,
+  disabled = false,
 }: EditableTextareaProps) {
   const [open, setOpen] = useState(false);
   const [editValue, setEditValue] = useState(value);
@@ -41,10 +43,14 @@ export function EditableTextarea({
     setOpen(false);
   };
 
+  if (disabled) {
+    return <div className="p-2 min-h-[40px] whitespace-pre-wrap">{value}</div>;
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div className="cursor-pointer hover:bg-accent p-2 rounded transition-colors min-h-[40px]">
+        <div className="cursor-pointer hover:bg-accent p-2 rounded transition-colors min-h-[40px] whitespace-pre-wrap">
           {value}
         </div>
       </DialogTrigger>

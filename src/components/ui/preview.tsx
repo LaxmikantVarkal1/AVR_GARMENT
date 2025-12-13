@@ -1,6 +1,6 @@
 "use client";
 
-import  { useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -13,6 +13,7 @@ import { X, Printer } from "lucide-react";
 import { useAtom } from "jotai";
 import { userRoleAtom } from "@/store/atoms";
 import { roleColumnConfig } from "@/constants";
+import { SizesList } from "@/components/table/SizesList";
 
 interface SavePageProps {
   data: any[];
@@ -140,16 +141,15 @@ export default function SavePage({ data, filter }: SavePageProps) {
             <Row label="Collected:" value={item.collected} />
           )}
 
-          {visible.sizes && (
-            <div className="border-b border-dotted border-gray-400 pb-0.5">
-              <div className="font-bold uppercase text-[9px] text-gray-600 mb-0.5">
-                Sizes:
+          {visible.sizes && item.sizes && item.sizes.length > 0 && (
+            <div className="border-b border-dotted border-gray-400 pb-1">
+              <div className="font-bold uppercase text-[9px] text-gray-600 mb-1">
+                Sizes Breakdown:
               </div>
-              <div className="text-[9px] pl-1 line-clamp-2 break-words whitespace-normal">
-                {Array.isArray(item.sizes)
-                  ? item.sizes.join(", ")
-                  : JSON.stringify(item.sizes)}
-              </div>
+              <SizesList
+                items={item.sizes}
+                className="border rounded-sm text-[8px] overflow-hidden"
+              />
             </div>
           )}
 
@@ -180,8 +180,8 @@ export default function SavePage({ data, filter }: SavePageProps) {
                       <div>
                         {Array.isArray(u.sizes)
                           ? u.sizes
-                              .map((s: any) => `${s.size}×${s.count}`)
-                              .join(", ")
+                            .map((s: any) => `${s.size}×${s.count}`)
+                            .join(", ")
                           : "-"}
                       </div>
                       <div className="text-center">{u.completed ?? 0}</div>

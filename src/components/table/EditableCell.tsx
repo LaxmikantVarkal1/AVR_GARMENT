@@ -20,9 +20,10 @@ interface EditableCellProps {
   value: string;
   onSave: (newValue: string) => void;
   label: string;
+  disabled?: boolean;
 }
 
-export function EditableCell({ value, onSave, label }: EditableCellProps) {
+export function EditableCell({ value, onSave, label, disabled = false }: EditableCellProps) {
   const [open, setOpen] = useState(false);
   const [editValue, setEditValue] = useState(value);
 
@@ -36,6 +37,10 @@ export function EditableCell({ value, onSave, label }: EditableCellProps) {
     onSave(editValue);
     setOpen(false);
   };
+
+  if (disabled) {
+    return <div className="p-2">{value}</div>;
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
