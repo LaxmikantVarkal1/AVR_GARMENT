@@ -678,6 +678,7 @@ export default function MainDashboard() {
                         <div className="flex-1 overflow-hidden -mx-4 px-4 sm:-mx-6 sm:px-6 flex flex-col">
                           <UserManager
                             users={item.user || []}
+                            itemName={item.name}
                             sizes={item.sizes.map((s: any) => ({
                               value: s,
                               label: s.split(":")[0],
@@ -1259,6 +1260,7 @@ export default function MainDashboard() {
                                                                 className="text-xs"
                                                               >
                                                                 {sizeEntry.size} × {sizeEntry.count}
+                                                                {(sizeEntry.completed !== undefined) && ` (${sizeEntry.completed})`}
                                                               </Badge>
                                                             )
                                                           )}
@@ -1303,6 +1305,7 @@ export default function MainDashboard() {
                                       <div className="flex-1 overflow-hidden -mx-4 px-4 sm:-mx-6 sm:px-6 flex flex-col">
                                         <UserManager
                                           users={item.user || []}
+                                          itemName={item.name}
                                           sizes={item.sizes.map((s: any) => ({
                                             value: s,
                                             label: s.split(":")[0],

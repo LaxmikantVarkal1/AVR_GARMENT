@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 interface SizeItem {
     size: string;
     count: string | number;
+    completed?: number;
 }
 
 interface SizesListProps {
@@ -15,7 +16,7 @@ export function SizesList({ items, className }: SizesListProps) {
         return <span className="text-xs text-muted-foreground">No sizes</span>;
     }
 
-    const parsedItems: SizeItem[] = items.map((item) => {
+    const parsedItems: SizeItem[] & { completed?: number }[] = items.map((item) => {
         if (typeof item === "string") {
             const parts = item.split(":");
             return {
@@ -26,22 +27,27 @@ export function SizesList({ items, className }: SizesListProps) {
             return {
                 size: item.size,
                 count: item.count || "-",
+                completed: item.completed,
             };
         }
         return { size: String(item), count: "-" };
     });
 
+    const hasCompleted = parsedItems.some(i => i.completed !== undefined);
+
     return (
         <div className={cn("border rounded-md overflow-hidden text-xs", className)}>
-            <div className="grid grid-cols-2 bg-muted/50 p-1.5 font-medium text-center text-muted-foreground border-b">
+            <div className={`grid ${hasCompleted ? "grid-cols-3" : "grid-cols-2"} bg-muted/50 p-1.5 font-medium text-center text-muted-foreground border-b`}>
                 <div>Size</div>
                 <div>Count</div>
+                {hasCompleted && <div>Done</div>}
             </div>
             <div className="divide-y bg-background">
                 {parsedItems.map((item, index) => (
-                    <div key={index} className="grid grid-cols-2 p-1.5 text-center hover:bg-muted/30 transition-colors">
+                    <div key={index} className={`grid ${hasCompleted ? "grid-cols-3" : "grid-cols-2"} p-1.5 text-center hover:bg-muted/30 transition-colors`}>
                         <div className="font-medium truncate px-1" title={item.size}>{item.size}</div>
                         <div className="text-muted-foreground truncate px-1" title={String(item.count)}>{item.count}</div>
+                        {hasCompleted && <div className="text-muted-foreground truncate px-1" title={String(item.completed ?? 0)}>{item.completed ?? 0}</div>}
                     </div>
                 ))}
             </div>

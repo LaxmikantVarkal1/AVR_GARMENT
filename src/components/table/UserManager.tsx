@@ -48,7 +48,7 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 // import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { allUsersAtom } from "@/store/atoms";
+import { allUsersAtom, menuCustomUsersAtom } from "@/store/atoms";
 import { useAtom } from "jotai";
 import { authService } from "@/service/authService";
 import { ButtonGroup } from "../ui/button-group";
@@ -59,13 +59,14 @@ import { SizesList } from "@/components/table/SizesList";
 interface SizeSelection {
   sizeValue: string;
   count: number;
+  completed: number;
 }
 
 interface UserEntry {
   user: { id: string; name?: string; email?: string; user?: string };
   menuId: string;
-  sizes: { size: string; count: number }[];
-  completed?: number;
+  sizes: { size: string; count: number; completed: number }[];
+  completed?: number; // kept for potential backward compatibility, but logically replaced by sizes[].completed
   assigner?: string;
   date?: Date;
   logs?: string; // Last update summary
@@ -75,12 +76,15 @@ interface UserManagerProps {
   users: UserEntry[];
   sizes: { value: string; label: string }[];
   onUpdate: (newUsers: UserEntry[]) => void;
+  itemName: string;
 }
 
-export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
+export function UserManager({ users, onUpdate, sizes, itemName }: UserManagerProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [allUsers] = useAtom(allUsersAtom);
+  const [customUsers, setCustomUsers] = useAtom(menuCustomUsersAtom);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [openUserAdd, setOpenUserAdd] = useState(false);
   const [, setOpenUserEdit] = useState(false);
@@ -127,10 +131,10 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     return date.toLocaleDateString();
   };
 
-  const buildLogLine = (editor?: { name?: string; email?: string }): string => {
+  const buildLogLine = (editor?: { name?: string; email?: string, display_name?: string }): string => {
     const when = formatRelativeDay(new Date());
-    const editorName = editor?.name || editor?.email || "Unknown";
-    return `Last update ${when} ${editorName}`;
+    const editorName = editor?.display_name || editor?.name || editor?.email || "Unknown";
+    return `Last update ${when} by:  ${editorName}`;
   };
 
   useEffect(() => {
@@ -180,7 +184,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
   // Handle size checkbox change
   const handleSizeToggle = (sizeValue: string, checked: boolean) => {
     if (checked) {
-      setSelectedSizes([...selectedSizes, { sizeValue, count: 1 }]);
+      setSelectedSizes([...selectedSizes, { sizeValue, count: 1, completed: 0 }]);
     } else {
       setSelectedSizes(selectedSizes.filter(s => s.sizeValue !== sizeValue));
     }
@@ -204,6 +208,15 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     } else {
       setValidationError("");
     }
+  };
+
+  const handleCompletedChange = (sizeValue: string, value: string) => {
+    const numValue = parseInt(value) || 0;
+
+    setSelectedSizes(selectedSizes.map(s =>
+      s.sizeValue === sizeValue ? { ...s, completed: numValue } : s
+    ));
+    setValidationError(""); // Clear validation on change to let user correct it
   };
 
   // Remove a selected size
@@ -252,17 +265,17 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
         setValidationError("All counts must be at least 1.");
         return;
       }
+      if (sizeSelection.completed < 0) {
+        setValidationError(`Completed count for size ${parseSizeValue(sizeSelection.sizeValue).size} cannot be negative.`);
+        return;
+      }
+      if (sizeSelection.completed > sizeSelection.count) {
+        setValidationError(`Completed count for size ${parseSizeValue(sizeSelection.sizeValue).size} cannot exceed total quantity.`);
+        return;
+      }
     }
 
-    const totalSelected = selectedSizes.reduce((sum, s) => sum + s.count, 0);
-    if (completedCount < 0) {
-      setValidationError("Completed items cannot be negative.");
-      return;
-    }
-    if (completedCount > totalSelected) {
-      setValidationError(`Completed items cannot exceed total (${totalSelected}).`);
-      return;
-    }
+    const totalCompleted = selectedSizes.reduce((sum, s) => sum + s.completed, 0);
 
     if (isDuplicateUser(selectedUser.id)) {
       setValidationError(`${getDisplayName(selectedUser as any)} has already been added to the list.`);
@@ -278,6 +291,8 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
 
     console.log("selectedUser", selectedUser)
 
+    console.log("user", user)
+
     onUpdate([
       ...users,
       {
@@ -285,10 +300,11 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
         menuId: menuId.trim(),
         sizes: selectedSizes.map(s => ({
           size: parseSizeValue(s.sizeValue).size,
-          count: s.count
+          count: s.count,
+          completed: s.completed
         })),
-        completed: completedCount,
-        assigner: user?.name || user?.email,
+        completed: totalCompleted, // keeping it for summary if needed, but per-size is source of truth
+        assigner: user?.display_name || user?.name || user?.email,
         date: new Date(),
         logs: buildLogLine(user)
       },
@@ -304,7 +320,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     const entry = users[index];
     setSelectedUser(entry.user);
     setMenuId(entry.menuId);
-    setCompletedCount(entry.completed ?? 0);
+    // setCompletedCount(entry.completed ?? 0);
 
     // Convert entry sizes back to SizeSelection format
     const sizeSelections: SizeSelection[] = entry.sizes.map(s => {
@@ -314,7 +330,8 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
       });
       return {
         sizeValue: matchingSizeOption?.value || "",
-        count: s.count
+        count: s.count,
+        completed: s.completed ?? 0 // fallback for old data
       };
     }).filter(s => s.sizeValue !== "");
 
@@ -342,17 +359,17 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
         setValidationError("All counts must be at least 1.");
         return;
       }
+      if (sizeSelection.completed < 0) {
+        setValidationError(`Completed count for size ${parseSizeValue(sizeSelection.sizeValue).size} cannot be negative.`);
+        return;
+      }
+      if (sizeSelection.completed > sizeSelection.count) {
+        setValidationError(`Completed count for size ${parseSizeValue(sizeSelection.sizeValue).size} cannot exceed total quantity.`);
+        return;
+      }
     }
 
-    const totalSelected = selectedSizes.reduce((sum, s) => sum + s.count, 0);
-    if (completedCount < 0) {
-      setValidationError("Completed items cannot be negative.");
-      return;
-    }
-    if (completedCount > totalSelected) {
-      setValidationError(`Completed items cannot exceed total (${totalSelected}).`);
-      return;
-    }
+    const totalCompleted = selectedSizes.reduce((sum, s) => sum + s.completed, 0);
 
     if (isDuplicateUser(selectedUser.id, editIndex)) {
       setValidationError(`${getDisplayName(selectedUser as any)} has already been added to the list.`);
@@ -372,9 +389,10 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
       menuId: menuId.trim(),
       sizes: selectedSizes.map(s => ({
         size: parseSizeValue(s.sizeValue).size,
-        count: s.count
+        count: s.count,
+        completed: s.completed
       })),
-      completed: completedCount,
+      completed: totalCompleted,
       logs: buildLogLine(user)
     };
     onUpdate(updatedUsers);
@@ -404,7 +422,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
     setValidationError("");
     setOpenUserAdd(false);
     setOpenUserEdit(false);
-    setCompletedCount(0);
+    // setCompletedCount(0);
   };
 
   const handleDialogClose = (open: boolean) => {
@@ -432,6 +450,12 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
   // Get total item count for an entry
   const getTotalCount = (entry: UserEntry): number => {
     return entry.sizes.reduce((total, s) => total + s.count, 0);
+  };
+
+  const getTotalCompleted = (entry: UserEntry): number => {
+    // Prefer summing up individual size completions if available
+    const sizeCompletedSum = entry.sizes.reduce((total, s) => total + (s.completed ?? 0), 0);
+    return sizeCompletedSum > 0 ? sizeCompletedSum : (entry.completed ?? 0);
   };
 
   // Update local state immediately for smooth UI
@@ -560,6 +584,10 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
               <td class="value">${entry.menuId}</td>
             </tr>
             <tr>
+              <td class="label">Name:</td>
+              <td class="value">${itemName}</td>
+            </tr>
+            <tr>
               <td class="label">Assigner:</td>
               <td class="value">${entry.assigner || "Admin"}</td>
             </tr>
@@ -574,7 +602,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
             </tr>
             <tr>
               <td class="label">Completed:</td>
-              <td class="value">${entry.completed || 0}</td>
+              <td class="value">${getTotalCompleted(entry)}</td>
             </tr>
           </table>
 
@@ -584,7 +612,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
               ${entry.sizes.map(s => `
                 <div class="size-item">
                   <span>Size: <b>${s.size}</b></span>
-                  <span>Qty: <b>${s.count}</b></span>
+                  <span>Qty: <b>${s.count}</b> / Done: <b>${s.completed ?? 0}</b></span>
                 </div>
               `).join("")}
             </div>
@@ -675,52 +703,94 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                         Search and select a user to assign.
                       </SheetDescription>
                     </SheetHeader>
-                    <Command>
-                      <CommandInput placeholder="Search users..." className="h-8" />
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Search users..."
+                        className="h-8"
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                      />
                       <CommandList>
-                        <CommandEmpty>No user found.</CommandEmpty>
-                        <CommandGroup>
-                          {allUsers.map((user: any) => (
-                            <CommandItem
-                              key={user.id}
-                              value={getDisplayName(user)}
-                              onSelect={() => {
-                                setSelectedUser(user);
-                                setOpenUserAdd(false);
-                                setValidationError("");
-                              }}
-                              className="cursor-pointer text-sm"
-                            >
-                              <div
-                                className={cn(
-                                  "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                  selectedUser?.id === user.id
-                                    ? "bg-primary text-primary-foreground"
-                                    : "opacity-50 [&_svg]:invisible"
-                                )}
+                        <CommandEmpty>
+                          {searchQuery && (
+                            <div className="p-2">
+                              <p className="text-sm text-muted-foreground mb-2">
+                                No user found.
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start h-8"
+                                onClick={() => {
+                                  const newUser = {
+                                    id: `custom-${Date.now()}`,
+                                    email: "",
+                                    display_name: searchQuery,
+                                    roles: ["users"],
+                                    created_at: new Date().toISOString(),
+                                    email_confirmed: null
+                                  };
+                                  setCustomUsers([...customUsers, newUser as any]);
+                                  setSelectedUser(newUser);
+                                  setOpenUserAdd(false);
+                                  setValidationError("");
+                                  setSearchQuery("");
+                                }}
                               >
-                                <svg
-                                  className="h-3 w-3"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={3}
+                                <Plus className="mr-2 h-3.5 w-3.5" />
+                                Create "{searchQuery}"
+                              </Button>
+                            </div>
+                          )}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {[...allUsers, ...customUsers]
+                            .filter((user: any) => {
+                              if (!searchQuery) return true;
+                              const name = getDisplayName(user).toLowerCase();
+                              return name.includes(searchQuery.toLowerCase());
+                            })
+                            .map((user: any) => (
+                              <CommandItem
+                                key={user.id}
+                                value={getDisplayName(user)}
+                                onSelect={() => {
+                                  setSelectedUser(user);
+                                  setOpenUserAdd(false);
+                                  setValidationError("");
+                                }}
+                                className="cursor-pointer text-sm"
+                              >
+                                <div
+                                  className={cn(
+                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                    selectedUser?.id === user.id
+                                      ? "bg-primary text-primary-foreground"
+                                      : "opacity-50 [&_svg]:invisible"
+                                  )}
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{user?.display_name || user?.email}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {user.email || user.id}
-                                </span>
-                              </div>
-                            </CommandItem>
-                          ))}
+                                  <svg
+                                    className="h-3 w-3"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={3}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{user?.display_name || user?.email}</span>
+                                  {user.id.startsWith("custom-") && (
+                                    <span className="text-[10px] text-muted-foreground">Local User</span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>
@@ -817,65 +887,62 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                       const remaining = getRemainingCountForSize(sizeSelection.sizeValue);
 
                       return (
-                        <Card key={sizeSelection.sizeValue} className="m-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="shrink-0">
-                              {sizeLabel}
-                            </Badge>
-                            <div className="flex-1 relative">
-                              <Input
-                                type="text"
-                                min="1"
-                                max={remaining}
-                                value={sizeSelection.count}
-                                onChange={(e) =>
-                                  handleCountChange(sizeSelection.sizeValue, e.target.value)
-                                }
-                                placeholder="Qty"
-                                className="h-8 text-sm pr-20"
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                                / {remaining}
-                              </span>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 shrink-0"
-                              onClick={() => handleRemoveSize(sizeSelection.sizeValue)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                        // <Card key={sizeSelection.sizeValue} className="w-[100%] m-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="shrink-0">
+                            {sizeLabel}
+                          </Badge>
+                          <div className="flex-1 relative">
+                            <Input
+                              type="text"
+                              min="1"
+                              max={remaining}
+                              value={sizeSelection.count}
+                              onChange={(e) =>
+                                handleCountChange(sizeSelection.sizeValue, e.target.value)
+                              }
+                              placeholder="Qty"
+                              className="h-8 text-sm pr-9"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              / {remaining}
+                            </span>
                           </div>
-                        </Card>
+
+                          <div className="flex-1 relative">
+                            <Input
+                              type="text"
+                              min="0"
+                              max={sizeSelection.count}
+                              value={sizeSelection.completed}
+                              onChange={(e) =>
+                                handleCompletedChange(sizeSelection.sizeValue, e.target.value)
+                              }
+                              placeholder="Done"
+                              className="h-8 text-sm pr-9"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              / {sizeSelection.count}
+                            </span>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={() => handleRemoveSize(sizeSelection.sizeValue)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        // </Card>
                       );
                     })}
                   </div>
                 </div>
               )}
-              {/* Completed Items Input */}
-              {selectedSizes.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1.5 text-sm">
-                    <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                    Completed Items
-                  </Label>
-                  <div className="relative">
-                    <NumberSpinner
-                      label={null}               // or a label string if you want
-                      min={0}
-                      onValueChange={(value: any) => setCompletedCount(value)}
-                      max={selectedSizes.reduce((sum, s) => sum + s.count, 0)}
-                      value={completedCount}
-                      className="h-9 text-sm pr-24" // you can still use Tailwind on the root
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                      / {selectedSizes.reduce((sum, s) => sum + s.count, 0)}
-                    </span>
-                  </div>
-                </div>
-              )}
+              {/* Global Completed Items Input Removed */}
             </div>
 
             <SheetFooter className="flex flex-row gap-2 pt-4 flex-shrink-0">
@@ -924,6 +991,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
               <Sheet open={openUserAdd} onOpenChange={setOpenUserAdd}>
                 <SheetTrigger asChild>
                   <Button
+                    disabled={true}
                     id="user-select"
                     variant="outline"
                     role="combobox"
@@ -945,52 +1013,94 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                     </SheetDescription>
                   </SheetHeader>
                   <div className="flex-1 overflow-y-auto py-2">
-                    <Command>
-                      <CommandInput placeholder="Search users..." className="h-8" />
+                    <Command shouldFilter={false}>
+                      <CommandInput
+                        placeholder="Search users..."
+                        className="h-8"
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                      />
                       <CommandList>
-                        <CommandEmpty>No user found.</CommandEmpty>
-                        <CommandGroup>
-                          {allUsers.map((user: any) => (
-                            <CommandItem
-                              key={user.id}
-                              value={getDisplayName(user)}
-                              onSelect={() => {
-                                setSelectedUser(user);
-                                setOpenUserAdd(false);
-                                setValidationError("");
-                              }}
-                              className="cursor-pointer text-sm"
-                            >
-                              <div
-                                className={cn(
-                                  "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                  selectedUser?.id === user.id
-                                    ? "bg-primary text-primary-foreground"
-                                    : "opacity-50 [&_svg]:invisible"
-                                )}
+                        <CommandEmpty>
+                          {searchQuery && (
+                            <div className="p-2">
+                              <p className="text-sm text-muted-foreground mb-2">
+                                No user found.
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full justify-start h-8"
+                                onClick={() => {
+                                  const newUser = {
+                                    id: `custom-${Date.now()}`,
+                                    email: "",
+                                    display_name: searchQuery,
+                                    roles: ["users"],
+                                    created_at: new Date().toISOString(),
+                                    email_confirmed: null
+                                  };
+                                  setCustomUsers([...customUsers, newUser as any]);
+                                  setSelectedUser(newUser);
+                                  setOpenUserAdd(false);
+                                  setValidationError("");
+                                  setSearchQuery("");
+                                }}
                               >
-                                <svg
-                                  className="h-3 w-3"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                  strokeWidth={3}
+                                <Plus className="mr-2 h-3.5 w-3.5" />
+                                Create "{searchQuery}"
+                              </Button>
+                            </div>
+                          )}
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {[...allUsers, ...customUsers]
+                            .filter((user: any) => {
+                              if (!searchQuery) return true;
+                              const name = getDisplayName(user).toLowerCase();
+                              return name.includes(searchQuery.toLowerCase());
+                            })
+                            .map((user: any) => (
+                              <CommandItem
+                                key={user.id}
+                                value={getDisplayName(user)}
+                                onSelect={() => {
+                                  setSelectedUser(user);
+                                  setOpenUserAdd(false);
+                                  setValidationError("");
+                                }}
+                                className="cursor-pointer text-sm"
+                              >
+                                <div
+                                  className={cn(
+                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                    selectedUser?.id === user.id
+                                      ? "bg-primary text-primary-foreground"
+                                      : "opacity-50 [&_svg]:invisible"
+                                  )}
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                </svg>
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{getDisplayName(user)}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {user.email || user.id}
-                                </span>
-                              </div>
-                            </CommandItem>
-                          ))}
+                                  <svg
+                                    className="h-3 w-3"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={3}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{user?.display_name || user?.email}</span>
+                                  {user.id.startsWith("custom-") && (
+                                    <span className="text-[10px] text-muted-foreground">Local User</span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>
@@ -1010,6 +1120,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                     <Hash className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
                   <Input
+                    disabled={true}
                     id="edit-menu-id"
                     value={menuId}
                     onChange={(e) => {
@@ -1020,12 +1131,11 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                     className="pr-9 h-9 text-sm"
                   />
 
-                  <Button variant="outline" className="h-9 text-sm">
+                  <Button disabled={true} variant="outline" className="h-9 text-sm">
                     <Hash className="h-3.5 w-3.5 text-muted-foreground" />
                   </Button>
 
                 </ButtonGroup>
-                <Hash className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               </div>
             </div>
 
@@ -1107,10 +1217,26 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
                                 handleCountChange(sizeSelection.sizeValue, e.target.value)
                               }
                               placeholder="Qty"
-                              className="h-8 text-sm pr-20"
+                              className="h-8 text-sm pr-9"
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                               / {remaining}
+                            </span>
+                          </div>
+                          <div className="flex-1 relative">
+                            <Input
+                              type="text"
+                              min="0"
+                              max={sizeSelection.count}
+                              value={sizeSelection.completed}
+                              onChange={(e) =>
+                                handleCompletedChange(sizeSelection.sizeValue, e.target.value)
+                              }
+                              placeholder="Done"
+                              className="h-8 text-sm pr-9"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                              / {sizeSelection.count}
                             </span>
                           </div>
                           <Button
@@ -1130,30 +1256,7 @@ export function UserManager({ users, onUpdate, sizes }: UserManagerProps) {
               </div>
             )}
 
-
-            {/* Completed Items Input */}
-            {selectedSizes.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5 text-sm">
-                  <Package className="h-3.5 w-3.5 text-muted-foreground" />
-                  Completed Items
-                </Label>
-                <div className="relative">
-                  <NumberSpinner
-                    label={null}               // or a label string if you want
-                    min={0}
-                    onValueChange={(value: any) => setCompletedCount(value)}
-                    max={selectedSizes.reduce((sum, s) => sum + s.count, 0)}
-                    value={completedCount}
-                    className="h-9 text-sm pr-24" // you can still use Tailwind on the root
-                  />
-
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                    / {selectedSizes.reduce((sum, s) => sum + s.count, 0)}
-                  </span>
-                </div>
-              </div>
-            )}
+            {/* Global Completed Items Input Removed */}
           </div>
 
           <SheetFooter className="flex flex-row gap-2 pt-4 flex-shrink-0">

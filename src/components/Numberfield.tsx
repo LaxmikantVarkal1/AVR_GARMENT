@@ -3,7 +3,7 @@ import { NumberField as BaseNumberField } from '@base-ui-components/react/number
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
-import FormLabel from '@mui/material/FormLabel'; import { Expand, Plus } from 'lucide-react';
+import FormLabel from '@mui/material/FormLabel'; import { Expand, Minus, Plus } from 'lucide-react';
 import OutlinedInput from '@mui/material/OutlinedInput';
 ;
 
@@ -92,7 +92,7 @@ export default function NumberSpinner({
                         />
                     }
                 >
-                    <Plus fontSize={size} />
+                    <Minus fontSize={size} />
                 </BaseNumberField.Decrement>
 
                 <BaseNumberField.Input

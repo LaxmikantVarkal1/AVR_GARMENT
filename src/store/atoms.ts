@@ -27,12 +27,12 @@ export const employee = atom<string>("");
 
 // Dropdown options atoms
 export const partyNameOptionsAtom = atomWithStorage<DropdownOption[]>(
-  "party_names",initialPartyNameOptions
+  "party_names", initialPartyNameOptions
 );
 export const itemNameOptionsAtom = atomWithStorage<DropdownOption[]>(
-  "item_names",initialItemNameOptions
+  "item_names", initialItemNameOptions
 );
-export const itemIdOptionsAtom = atomWithStorage<DropdownOption[]>( "item_id",initialItemIdOptions);
+export const itemIdOptionsAtom = atomWithStorage<DropdownOption[]>("item_id", initialItemIdOptions);
 
 // Derived atoms
 export const filteredPartiesAtom = atom((get) => {
@@ -101,13 +101,13 @@ export const updateItemFieldAtom = atom(
       parties.map((party) =>
         party.id === partyId
           ? {
-              ...party,
-              items: party?.items?.map((item) =>
-                item._internalId === internalItemId
-                  ? { ...item, [field]: value }
-                  : item
-              ),
-            }
+            ...party,
+            items: party?.items?.map((item) =>
+              item._internalId === internalItemId
+                ? { ...item, [field]: value }
+                : item
+            ),
+          }
           : party
       )
     );
@@ -229,3 +229,9 @@ export const isUserLoggedInAtom = atom(
   (get) => get(userAtom) !== null
 )
 
+
+// Local storage for custom users added in the menu
+export const menuCustomUsersAtom = atomWithStorage<UserProfile[]>(
+  "menu_custom_users",
+  []
+);
