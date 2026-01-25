@@ -62,11 +62,11 @@ export default function DataVisualizationTable() {
   const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
   const [userRole, setUserRole] = useAtom(userRoleAtom);
   const filteredData = useAtomValue(filteredPartiesAtom);
-  
+
   const partyNameOptions = useAtomValue(partyNameOptionsAtom);
   const itemNameOptions = useAtomValue(itemNameOptionsAtom);
   const itemIdOptions = useAtomValue(itemIdOptionsAtom);
-  
+
   const updatePartyName = useSetAtom(updatePartyNameAtom);
   const updateItemField = useSetAtom(updateItemFieldAtom);
   const addPartyNameOption = useSetAtom(addPartyNameOptionAtom);
@@ -78,7 +78,7 @@ export default function DataVisualizationTable() {
   const handleSaveData = () => {
     console.log("=== SAVED DATA ===");
     console.log("Current User Role:", userRole);
-    
+
     const dataToSave = parties.map((party) => ({
       ...party,
       items: party?.items?.map((item) => {
@@ -466,7 +466,8 @@ export default function DataVisualizationTable() {
                                 </DialogDescription>
                               </DialogHeader>
                               <UserManager
-                               sizes={[]}
+                                sizes={[]}
+                                itemName={item.name}
                                 users={item.user as any}
                                 onUpdate={(newUsers) =>
                                   updateItemField({

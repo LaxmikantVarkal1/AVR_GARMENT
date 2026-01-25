@@ -108,14 +108,15 @@ export default function MainDashboard() {
   const [expandedCards, setExpandedCards] = React.useState<Set<string>>(new Set());
 
   // Mobile party filter
-  const [mobilePartyFilter, setMobilePartyFilter] = React.useState("all");
+  // const [mobilePartyFilter, setMobilePartyFilter] = React.useState("all");
+  const [mobilePartyFilter] = React.useState("all");
 
-  const uniquePartyNames = React.useMemo(() => {
-    // using filteredData or parties? filteredData is likely what we want to filter further or just parties?
-    // User said "dropdown contains list of parties" which usually implies all available parties.
-    const names = new Set(parties.map((p) => p.party_name).filter(Boolean));
-    return Array.from(names);
-  }, [parties]);
+  // const uniquePartyNames = React.useMemo(() => {
+  //   // using filteredData or parties? filteredData is likely what we want to filter further or just parties?
+  //   // User said "dropdown contains list of parties" which usually implies all available parties.
+  //   const names = new Set(parties.map((p) => p.party_name).filter(Boolean));
+  //   return Array.from(names);
+  // }, [parties]);
 
   const toggleCard = (cardId: string) => {
     setExpandedCards((prev) => {
@@ -248,15 +249,24 @@ export default function MainDashboard() {
 
 
   // Mobile Card Component
-  const MobileItemCard = ({ party, item, partyIndex, itemIndex }: any) => {
+  const MobileItemCard = ({ party, item, itemIndex }: any) => {
     const cardId = `${party.id}-${item._internalId}`;
     const isExpanded = expandedCards.has(cardId);
 
-
+    // Generate random pastel color if not provided
+    const bgColor = React.useMemo(() => {
+      let hash = 0;
+      const str = item._internalId || "default";
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const hue = Math.abs(hash % 360);
+      return `hsl(${hue}, 60%, 96%)`;
+    }, [item._internalId]);
 
     return (
 
-      <Card className={`min-w-[320px] max-w-[320px] m-1.5 ${getPartyBgClass(partyIndex)}`}>
+      <Card className="min-w-[320px] max-w-[320px] m-1.5" style={{ backgroundColor: bgColor }}>
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 space-y-2">
@@ -1346,7 +1356,7 @@ export default function MainDashboard() {
         {parties.length > 0 && (
           <div className="md:hidden">
             <div className="px-6 mb-4">
-              <Select
+              {/* <Select
                 value={mobilePartyFilter}
                 onValueChange={setMobilePartyFilter}
               >
@@ -1361,7 +1371,7 @@ export default function MainDashboard() {
                     </SelectItem>
                   ))}
                 </SelectContent>
-              </Select>
+              </Select> */}
             </div>
 
             <div ref={scrollRef} className="overflow-x-auto pb-4 -mx-6 px-6">
@@ -1387,13 +1397,15 @@ export default function MainDashboard() {
                           {data.items.map(
                             (itemData: any, itemIndex: number) => {
                               return (
-                                <MobileItemCard
-                                  key={itemData._internalId}
-                                  party={data}
-                                  item={itemData}
-                                  partyIndex={index}
-                                  itemIndex={itemIndex}
-                                />
+                                <>
+                                  <MobileItemCard
+                                    key={itemData._internalId}
+                                    party={data}
+                                    item={itemData}
+                                    partyIndex={index}
+                                    itemIndex={itemIndex}
+                                  />
+                                </>
                               );
                             }
                           )}

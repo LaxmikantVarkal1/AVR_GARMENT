@@ -64,26 +64,9 @@ export const roleColumnConfig: Record<string, ColumnVisibility> = {
   },
 };
 
-export const initialPartyNameOptions: DropdownOption[] = [
-  { value: "ABC Textiles", label: "ABC Textiles" },
-  { value: "XYZ Fabrics", label: "XYZ Fabrics" },
-  { value: "Premium Cloth House", label: "Premium Cloth House" },
-  { value: "Royal Garments", label: "Royal Garments" },
-  { value: "Golden Threads", label: "Golden Threads" },
-  { value: "Fashion Hub", label: "Fashion Hub" },
-  { value: "Silk Palace", label: "Silk Palace" },
-];
+export const initialPartyNameOptions: DropdownOption[] = [];
 
-export const initialItemNameOptions: DropdownOption[] = [
-  { value: "panjabi", label: "Panjabi" },
-  { value: "kurta", label: "Kurta" },
-  { value: "shirt", label: "Shirt" },
-  { value: "pant", label: "Pant" },
-  { value: "saree", label: "Saree" },
-  { value: "dupatta", label: "Dupatta" },
-  { value: "sherwani", label: "Sherwani" },
-  { value: "blouse", label: "Blouse" },
-];
+export const initialItemNameOptions: DropdownOption[] = [];
 
 export const initialItemIdOptions: DropdownOption[] = [
   { value: "10001", label: "10001" },
@@ -91,10 +74,6 @@ export const initialItemIdOptions: DropdownOption[] = [
   { value: "10003", label: "10003" },
   { value: "10004", label: "10004" },
   { value: "10005", label: "10005" },
-  { value: "10092", label: "10092" },
-  { value: "10093", label: "10093" },
-  { value: "10094", label: "10094" },
-  { value: "10095", label: "10095" },
 ];
 
 export const sizeOptions: DropdownOption[] = [

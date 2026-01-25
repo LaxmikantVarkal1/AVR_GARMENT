@@ -52,7 +52,7 @@ import { allUsersAtom, menuCustomUsersAtom } from "@/store/atoms";
 import { useAtom } from "jotai";
 import { authService } from "@/service/authService";
 import { ButtonGroup } from "../ui/button-group";
-import NumberSpinner from "../Numberfield";
+// import NumberSpinner from "../Numberfield";
 import { SizesList } from "@/components/table/SizesList";
 
 // Size selection with count
@@ -104,7 +104,7 @@ export function UserManager({ users, onUpdate, sizes, itemName }: UserManagerPro
   const [selectedSizes, setSelectedSizes] = useState<SizeSelection[]>([]);
 
   const [validationError, setValidationError] = useState<string>("");
-  const [completedCount, setCompletedCount] = useState<number>(0);
+  // const [completedCount, setCompletedCount] = useState<number>(0);
 
   // Optimistic state for smooth slider interaction
   const [localCompletedValues, setLocalCompletedValues] = useState<{ [key: number]: number }>({});
