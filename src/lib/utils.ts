@@ -20,15 +20,26 @@ export const fetchPartiesAtom = atom(async () => {
     console.error("Error fetching parties:", error);
     return [];
   }
-   // ✅ Normalize "items" key casing
-   const normalized = (data || []).map((party) => ({
+  // ✅ Normalize "items" key casing
+  const normalized = (data || []).map((party) => ({
     ...party,
     items: party.items || party.items || [],
   }));
   return normalized || [];
 });
+export const formatDate = (date?: Date | string) => {
+  if (!date) return "N/A";
+  // Handle ISO strings or Date objects
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "Invalid Date";
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+};
 
-export const savePartiesAtom = atom(null, async (_get, _set, id:number, parties: Party[]) => {
+export const savePartiesAtom = atom(null, async (_get, _set, id: number, parties: Party[]) => {
   // const { error } = await supabase
   // .from("party_data")
   // .upsert([{ id, data: parties,updated_at:new Date() }], { onConflict: "id" }) // insert entire array as JSON
@@ -45,9 +56,9 @@ export const savePartiesAtom = atom(null, async (_get, _set, id:number, parties:
       const { error } = await supabase
         .from("party_data")
         .upsert(
-          [{ 
-            id, 
-            data: parties, 
+          [{
+            id,
+            data: parties,
             updated_at: new Date()
           }],
           { onConflict: "id" }

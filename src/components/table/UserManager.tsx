@@ -784,7 +784,8 @@ export function UserManager({ users, onUpdate, sizes, itemName }: UserManagerPro
                                   </svg>
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="font-medium">{user?.display_name || user?.email}</span>
+                                  <span className="font-medium">{user?.display_name || "Name not found !"}</span>
+                                  <span className="font-normal text-xs">{user?.name || "Gmail not found !"}</span>
                                   {user.id.startsWith("custom-") && (
                                     <span className="text-[10px] text-muted-foreground">Local User</span>
                                   )}

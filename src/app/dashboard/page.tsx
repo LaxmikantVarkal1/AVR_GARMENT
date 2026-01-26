@@ -475,7 +475,7 @@ export default function MainDashboard() {
               {columnVisibility.cutting && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Cutting</p>
-                  {userRole === "collector" ? (
+                  {!userRole.includes("cutting") && !userRole.includes("admin") ? (
                     <div className="text-sm font-medium opacity-60">{item.cuttting || "—"}</div>
                   ) : (
                     <TableNumberInput
@@ -1075,7 +1075,7 @@ export default function MainDashboard() {
 
                             {columnVisibility.cutting && (
                               <TableCell className="align-top">
-                                {userRole === "collector" ? (
+                                {!userRole.includes("cutting") && !userRole.includes("admin") ? (
                                   <div className="text-sm font-medium opacity-60">
                                     {item.cuttting || "—"}
                                   </div>
@@ -1443,23 +1443,6 @@ export default function MainDashboard() {
           </ButtonGroup>
         </div>
       </div>
-
-      {/* <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        {role.includes("admin") && (
-          <TabsList className="grid w-[240px] ml-auto grid-cols-2 mb-6">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="access-control">Access Control</TabsTrigger>
-          </TabsList>
-        )}
-
-        <TabsContent value="dashboard" className="space-y-4">
-         
-        </TabsContent>
-
-        <TabsContent value="access-control" className="space-y-4">
-          <AccessControl />
-        </TabsContent>
-      </Tabs> */}
     </div>
   );
 }
