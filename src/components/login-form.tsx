@@ -10,29 +10,27 @@ import {
 } from "@/components/ui/card"
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useAtom } from "jotai"
-import { isLogin, userAtom, authLoadingAtom, authErrorAtom, authenticated } from "@/store/atoms"
+import { userAtom, authLoadingAtom, authErrorAtom, authenticated } from "@/store/atoms"
 import { useState, type FormEvent } from "react"
 import { authService } from "@/service/authService"
-import { Chrome } from "lucide-react"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [, setIsLoggedIn] = useAtom(isLogin)
+  // const [, setIsLoggedIn] = useAtom(isLogin)
   const [_, setIsAuthenticated] = useAtom(authenticated)
   const [, setUser] = useAtom(userAtom)
   const [isLoading, setIsLoading] = useAtom(authLoadingAtom)
   const [authError, setAuthError] = useAtom(authErrorAtom)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [email, setEmail] = useState("demo@gmail.com")
+  const [password, setPassword] = useState("Lucky@2001")
   const [errors, setErrors] = useState<{
     email?: string
     password?: string
@@ -40,51 +38,51 @@ export function LoginForm({
 
   const validateForm = () => {
     const newErrors: typeof errors = {}
-    
+
     if (!email) {
       newErrors.email = "Email is required"
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = "Please enter a valid email address"
     }
-    
+
     if (!password) {
       newErrors.password = "Password is required"
     } else if (password.length < 6) {
       newErrors.password = "Password must be at least 6 characters"
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
+
     setErrors({})
     setAuthError(null)
-    
+
     if (!validateForm()) {
       return
     }
-    
+
     try {
       setIsLoading(true)
-      
+
       // Only call login - don't call getAllUsers()
-      const user:any = await authService.login({ email, password })
+      const user: any = await authService.login({ email, password })
       user["display_name"] = user.email.split("@")[0]
       setUser(user)
       setIsAuthenticated(true)
       window.location.reload()
       console.log("Login successful:", user)
-    
 
-      
+
+
     } catch (error) {
       console.error("Login error:", error)
       setAuthError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : "Failed to login. Please check your credentials."
       )
     } finally {
@@ -92,19 +90,19 @@ export function LoginForm({
     }
   }
 
-  const handleGoogleLogin = async () => {
-    try {
-      setAuthError(null)
-      await authService.loginWithGoogle()
-    } catch (error) {
-      console.error("Google login error:", error)
-      setAuthError(
-        error instanceof Error 
-          ? error.message 
-          : "Failed to login with Google. Please try again."
-      )
-    }
-  }
+  // const handleGoogleLogin = async () => {
+  //   try {
+  //     setAuthError(null)
+  //     await authService.loginWithGoogle()
+  //   } catch (error) {
+  //     console.error("Google login error:", error)
+  //     setAuthError(
+  //       error instanceof Error
+  //         ? error.message
+  //         : "Failed to login with Google. Please try again."
+  //     )
+  //   }
+  // }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -169,8 +167,8 @@ export function LoginForm({
               </Field>
 
               <Field>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isLoading}
                   className="w-full"
                 >
@@ -182,14 +180,14 @@ export function LoginForm({
                 <div className="absolute inset-0 flex items-center">
                   <Separator className="w-full" />
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
+                {/* <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-background px-2 text-muted-foreground">
                     Or continue with
                   </span>
-                </div>
+                </div> */}
               </div>
 
-              <Field>
+              {/* <Field>
                 <Button
                   type="button"
                   variant="outline"
@@ -200,6 +198,31 @@ export function LoginForm({
                   <Chrome className="mr-2 h-4 w-4" />
                   Continue with Google
                 </Button>
+
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={async () => {
+                      try {
+                        setIsLoading(true);
+                        const user: any = await authService.loginAsPreviewAdmin();
+                        setUser(user);
+                        setIsAuthenticated(true);
+                        window.location.reload();
+                      } catch (error) {
+                        console.error('Preview login error:', error);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    Preview Admin
+                  </Button>
+                </div>
+
                 <FieldDescription className="text-center">
                   Don&apos;t have an account?{" "}
                   <a
@@ -209,7 +232,7 @@ export function LoginForm({
                     Sign up
                   </a>
                 </FieldDescription>
-              </Field>
+              </Field> */}
             </FieldGroup>
           </form>
         </CardContent>

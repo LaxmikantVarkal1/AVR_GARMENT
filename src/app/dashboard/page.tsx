@@ -171,6 +171,8 @@ export default function MainDashboard() {
     console.log("Current User Role:", userRole);
     console.log("Parties Data:", parties);
     console.log("fetchedParties Data from Supabase:", fetchedParties);
+    alert("Save is disabled in Preview Mode");
+    return
     await saveParties(1, parties);
     console.log(allUsers);
     console.log("==================");
