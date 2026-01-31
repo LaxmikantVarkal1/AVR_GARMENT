@@ -7,7 +7,7 @@ import { LogOut } from 'lucide-react';
 
 const UserProfile: React.FC = () => {
   const { user, logout, loading } = useAuth();
-  const [,setIsAuthenticated] = useAtom(authenticated)
+  const [, setIsAuthenticated] = useAtom(authenticated)
 
   if (!user) return null;
 
@@ -15,9 +15,9 @@ const UserProfile: React.FC = () => {
   return (
     <div className="bg-white p-2 max-w-md mx-auto ">
       <h2 className="text-xs font-bold text-gray-900 mb-4">User Profile</h2>
-      
+
       <div className="space-y-3">
-       <div>
+        <div>
           <label className="block text-sm font-medium text-gray-500">Username</label>
           <p className="mt-1 text-sm text-gray-900">{user?.display_name || user.email.split("@")[0]}</p>
         </div>
@@ -27,12 +27,12 @@ const UserProfile: React.FC = () => {
           <label className="block text-sm font-medium text-gray-500">Email</label>
           <p className="mt-1 text-sm text-gray-900">{user.email}</p>
         </div>
-        
+
         {/* <div>
           <label className="block text-sm font-medium text-gray-500">User ID</label>
           <p className="mt-1 text-gray-900 font-mono text-xs">{user.id}</p>
         </div> */}
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-500 mb-2">Roles</label>
           <div className="flex flex-wrap gap-2">
@@ -49,14 +49,14 @@ const UserProfile: React.FC = () => {
       </div>
 
       <button
-        onClick={()=>{
-            logout();
-            setIsAuthenticated(false)
+        onClick={() => {
+          logout();
+          setIsAuthenticated(false)
         }}
         disabled={loading}
-        className="mt-6 flex flex-row gap-2 w-full bg-destructive text-white py-2 px-4 rounded-md hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+        className="mt-6 flex flex-row gap-2 w-full bg-destructive/30 py-2 px-4 rounded-md hover:bg-destructive/80 hover:cursor-pointer"
       >
-        <LogOut/>
+        <LogOut />
         {loading ? 'Logging out...' : 'Logout'}
       </button>
     </div>

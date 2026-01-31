@@ -728,7 +728,6 @@ export default function MainDashboard() {
   return (
     <div className="w-full flex flex-col p-6 pb-5 pt:2 md:pt-10">
 
-
       <div className="space-y-4">
         {/* Fixed Action Buttons */}
         <div className="flex items-center justify-end h-16 w-full flex-row gap-4 sticky top-0 bg-background z-20">
@@ -1445,6 +1444,6 @@ export default function MainDashboard() {
           </ButtonGroup>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
