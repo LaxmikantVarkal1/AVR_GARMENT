@@ -1,73 +1,90 @@
-# React + TypeScript + Vite
+# AVR GARMENT Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A comprehensive dashboard for managing garment production workflows, designed to streamline operations from cloth reception to final garment collection.
 
-Currently, two official plugins are available:
+## Project Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+**AVR Garment Management System** helps track the complete lifecycle of garment production. The system provides role-based dashboards to ensure transparency, accountability, and smooth coordination between different stages of production.
 
-## React Compiler
+Authentication and data storage are securely managed using **Supabase**, enabling role-based login, real-time data updates, and reliable database handling.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+🔗 **Project URL**:  
+👉 [https://laxmikantvarkal1.github.io/AVR-garment/](https://laxmikantvarkal1.github.io/AVR-garment/)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Roles and Features
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 🔑 Admin
+- Full access to all parties, items, and production data  
+- User and workflow management  
+- Overall production monitoring  
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### ✂️ Cutting
+- Track cutting processes and quantities  
+- Update cutting status and cutting dates  
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 📦 Distributor
+- Manage distribution of cut pieces to workers  
+- Track size-wise allocations  
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 🧺 Collector
+- Log and track finished garment collections  
+- Update collection quantities and dates  
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Data Structure (Garment Data)
+
+The core tracking entity in this system is the **Party**, which represents a client or source. Each Party contains multiple **Items**.
+
+### Party
+- `id`: Unique identifier for the party  
+- `party_name`: Name of the client (e.g., "ABC Textiles")  
+- `items`: Array of garment orders associated with the party  
+
+---
+
+### Item
+
+Each item represents a specific garment order.
+
+#### Identity
+- `id`: Unique Item ID (e.g., "10001")  
+- `name`: Garment type (e.g., "panjabi", "shirt")  
+- `description`: Additional details about the item  
+
+#### Production Metrics
+- `recived`: Quantity of cloth received (e.g., "8000m")  
+- `cuttting`: Quantity of cloth cut (e.g., "1000m")  
+- `collected`: Quantity or status of finished garments  
+
+#### Distribution & Tracking
+- `sizes`: Array of size distributions  
+  - Example: `["34:10", "36:12"]`  
+- `user`: List of assigned workers/users  
+
+#### Timeline
+- `givenClothDate`: Date when the cloth was received  
+- `cuttingDate`: Scheduled or actual cutting date  
+- `collectDate`: Scheduled or actual collection date  
+
+---
+
+## Tech Stack
+
+- React  
+- TypeScript  
+- Vite  
+- Supabase (Authentication & Database)
+
+---
+
+## Key Highlights
+
+- Role-based access control  
+- End-to-end garment production tracking  
+- Real-time database updates with Supabase  
+- Clean and scalable data structure  
+- Designed for small to medium garment operations  
+

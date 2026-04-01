@@ -13,7 +13,7 @@ export const roleColumnConfig: Record<string, ColumnVisibility> = {
     cuttingDate: false,
     collected: false,
     collectDate: false,
-    sizes: false,
+    sizes: true,
     users: false,
     print: true,
   },

@@ -12,7 +12,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { fetchPartiesAtom } from "@/lib/utils";
-import  HeaderTabs  from "@/components/tabs";
+import HeaderTabs from "@/components/tabs";
 import User from "../Dashboard/user";
 import LoginPage from "./signin";
 import SignupPage from "./signup";
@@ -30,12 +30,12 @@ export default function Init() {
   const [, setParties] = useAtom(partiesAtom);
   const [tasks, setEmployees] = useAtom(employee);
 
-  const roleBasedView:any = {
-    "users": <User tasks ={tasks}/>,
-    "admin": <HeaderTabs tasks ={tasks} />,
-    "cutting":<HeaderTabs tasks ={tasks} />,
-    "distributor":<HeaderTabs tasks ={tasks} />,
-    "collector":<HeaderTabs tasks ={tasks} />
+  const roleBasedView: any = {
+    "users": <User tasks={tasks} />,
+    "admin": <HeaderTabs tasks={tasks} />,
+    "cutting": <HeaderTabs tasks={tasks} />,
+    "distributor": <HeaderTabs tasks={tasks} />,
+    "collector": <HeaderTabs tasks={tasks} />
   }
 
   useEffect(() => {
@@ -47,15 +47,15 @@ export default function Init() {
           user.roles.includes("admin") ||
           user.roles.includes("distributor")
         ) {
-          const allUsers: any = await authService.getAllUsers();
+          const allUsers: any = await authService?.getAllUsers() || [];
           setAllusers(
             allUsers.map((u: any) => ({ id: u.id, name: u.email || u?.name, display_name: u?.display_name || u.email.split("@")[0] }))
           );
         }
         let result: any = [];
-        fetchedParties[0].data.forEach((party: any) => {
+        fetchedParties[0]?.data?.forEach((party: any) => {
           party.items.forEach((item: any) => {
-            let task:any[] =  item.user.filter(
+            let task: any[] = item.user.filter(
               (u: any) => (u.user.name === user?.email))
 
             if (
@@ -63,7 +63,7 @@ export default function Init() {
                 (u: any) => u.user.name === user?.email
               )
             ) {
-              result.push({item_name:item.name,data:task});
+              result.push({ item_name: item.name, data: task });
             }
           });
         });

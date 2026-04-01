@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils";
 
 interface SizesTodoProps {
   items: string[];
+  userRole?: string;
   onUpdate: (newItems: string[]) => void;
 }
 
-export function SizesTodo({ items, onUpdate }: SizesTodoProps) {
+export function SizesTodo({ items, userRole = "admin", onUpdate }: SizesTodoProps) {
+  const isAdmin = userRole === "admin" || !userRole;
   const [checkedItems] = useState<Set<number>>(new Set());
   const [inputValue, setInputValue] = useState("");
   const [error, setError] = useState("");
@@ -71,31 +73,33 @@ export function SizesTodo({ items, onUpdate }: SizesTodoProps) {
   return (
     <div className="space-y-4">
       {/* Input Field */}
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder='Enter size like "S:200" or "34:299"'
-            value={inputValue}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className={cn(
-              "flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2",
-              error
-                ? "border-red-500 focus:ring-red-300"
-                : "border-input focus:ring-primary/30"
-            )}
-          />
-          <Button onClick={handleAdd} className="shrink-0">
-            <Plus className="h-4 w-4 mr-1" /> Add
-          </Button>
-        </div>
+      {isAdmin && (
+        <div className="flex flex-col gap-2">
+          {(userRole === "admin") && <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder='Enter size like "S:200" or "34:299"'
+              value={inputValue}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className={cn(
+                "flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2",
+                error
+                  ? "border-red-500 focus:ring-red-300"
+                  : "border-input focus:ring-primary/30"
+              )}
+            />
+            <Button onClick={handleAdd} className="shrink-0">
+              <Plus className="h-4 w-4 mr-1" /> Add
+            </Button>
+          </div>}
 
-        {/* Inline Error */}
-        {error && (
-          <p className="text-xs text-red-500 font-medium">{error}</p>
-        )}
-      </div>
+          {/* Inline Error */}
+          {error && (
+            <p className="text-xs text-red-500 font-medium">{error}</p>
+          )}
+        </div>
+      )}
 
       {/* List of Sizes */}
       <div className="space-y-2 max-h-[300px] overflow-y-auto">
@@ -104,29 +108,56 @@ export function SizesTodo({ items, onUpdate }: SizesTodoProps) {
             No sizes added yet
           </p>
         ) : (
-          items.map((item, index) => (
-            <div
-              key={index}
-              className="flex items-center gap-2 p-2 rounded-md border bg-card hover:bg-accent transition-colors"
-            >
-              <span
-                className={cn(
-                  "flex-1 font-mono text-sm",
-                  checkedItems.has(index) && "line-through text-muted-foreground"
+          items.map((item, index) => {
+            const parts = item.split(':');
+            const sizeLabel = parts[0];
+            const sizeCount = parts[1] || "-";
+            const cuttedCount = parts[2] || "";
+
+            return (
+              <div
+                key={index}
+                className="flex items-center gap-2 p-2 rounded-md border bg-card hover:bg-accent transition-colors"
+              >
+                <div
+                  className={cn(
+                    "flex-1 font-mono text-sm flex items-center justify-between",
+                    checkedItems.has(index) && "line-through text-muted-foreground"
+                  )}
+                >
+                  <span>{sizeLabel}:{sizeCount}</span>
+                  {userRole === "cutting" && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Cutted:</span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={cuttedCount}
+                        onChange={(e) => {
+                          const newCutted = e.target.value;
+                          const newItems = [...items];
+                          // Preserve the base string
+                          newItems[index] = `${sizeLabel}:${sizeCount}${newCutted ? `:${newCutted}` : ""}`;
+                          onUpdate(newItems);
+                        }}
+                        className="w-16 rounded-md border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      />
+                    </div>
+                  )}
+                </div>
+                {isAdmin && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleRemove(index)}
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 )}
-              >
-                {item}
-              </span>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={() => handleRemove(index)}
-                className="h-8 w-8"
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          ))
+              </div>
+            );
+          })
         )}
       </div>
 

@@ -5,9 +5,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   Plus,
   Save as SaveIcon,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
+  Trash2
 } from "lucide-react";
 import {
   Table,
@@ -71,11 +69,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import ReceiptViewModal from "@/components/ui/preview";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 
 import useKeepScrollXY from "../../hooks/useKeepScrollPosition"
+import { useAuth } from "@/context/AuthContext";
 
 export default function MainDashboard() {
+  const { user } = useAuth();
+
   const [parties, setParties] = useAtom(partiesAtom);
   //setSearchQuery
   const [searchQuery] = useAtom(searchQueryAtom);
@@ -105,7 +106,7 @@ export default function MainDashboard() {
   const [role] = useAtom(allowedRoles);
 
   // Track expanded cards
-  const [expandedCards, setExpandedCards] = React.useState<Set<string>>(new Set());
+  const [_, setExpandedCards] = React.useState<Set<string>>(new Set());
 
   // Mobile party filter
   // const [mobilePartyFilter, setMobilePartyFilter] = React.useState("all");
@@ -251,7 +252,7 @@ export default function MainDashboard() {
   // Mobile Card Component
   const MobileItemCard = ({ party, item, itemIndex }: any) => {
     const cardId = `${party.id}-${item._internalId}`;
-    const isExpanded = expandedCards.has(cardId);
+    // const isExpanded = expandedCards.has(cardId);
 
     // Generate random pastel color if not provided
     const bgColor = React.useMemo(() => {
@@ -394,8 +395,8 @@ export default function MainDashboard() {
             )}
           </div>
 
-          <Collapsible open={isExpanded} onOpenChange={() => toggleCard(cardId)}>
-            <CollapsibleTrigger asChild>
+          <Collapsible open={true} onOpenChange={() => toggleCard(cardId)}>
+            {/* <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" className="w-full mt-2">
                 {isExpanded ? (
                   <>
@@ -409,7 +410,7 @@ export default function MainDashboard() {
                   </>
                 )}
               </Button>
-            </CollapsibleTrigger>
+            </CollapsibleTrigger> */}
 
             <CollapsibleContent className="space-y-3 mt-3">
               {columnVisibility.description && (
@@ -475,7 +476,7 @@ export default function MainDashboard() {
               {columnVisibility.cutting && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Cutting</p>
-                  {!userRole.includes("cutting") && !userRole.includes("admin") ? (
+                  {userRole !== "admin" ? (
                     <div className="text-sm font-medium opacity-60">{item.cuttting || "—"}</div>
                   ) : (
                     <TableNumberInput
@@ -497,18 +498,26 @@ export default function MainDashboard() {
               {columnVisibility.cuttingDate && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Cutting Date</p>
-                  <DatePicker
-                    date={item.cuttingDate}
-                    onDateChange={(date) =>
-                      updateItemField({
-                        partyId: party.id,
-                        internalItemId: item._internalId,
-                        field: "cuttingDate",
-                        value: date,
-                      })
-                    }
-                    placeholder="Select cutting date"
-                  />
+                  {userRole !== "admin" ? (
+                    <div className="text-sm font-medium opacity-60">
+                      {item.cuttingDate ? new Date(item.cuttingDate).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "short", year: "numeric"
+                      }) : "Not set"}
+                    </div>
+                  ) : (
+                    <DatePicker
+                      date={item.cuttingDate}
+                      onDateChange={(date) =>
+                        updateItemField({
+                          partyId: party.id,
+                          internalItemId: item._internalId,
+                          field: "cuttingDate",
+                          value: date,
+                        })
+                      }
+                      placeholder="Select cutting date"
+                    />
+                  )}
                 </div>
               )}
 
@@ -563,7 +572,7 @@ export default function MainDashboard() {
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Sizes</p>
                   <SizesList items={item.sizes} />
-                  {userRole === "cutting" && (
+                  {(user?.roles.includes("cutting") || user?.roles.includes("admin")) && (
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="outline" size="sm" className="w-full mt-2">
@@ -579,6 +588,7 @@ export default function MainDashboard() {
                         </DialogHeader>
                         <SizesTodo
                           items={item.sizes}
+                          userRole={userRole}
                           onUpdate={(newSizes) =>
                             updateItemField({
                               partyId: party.id,
@@ -654,7 +664,7 @@ export default function MainDashboard() {
                                             <SizesList items={userEntry.sizes} />
                                           </div>
                                         )}
-                                      </div>
+                                      </div>``
                                     </div>
                                   );
                                 })}
@@ -1166,11 +1176,9 @@ export default function MainDashboard() {
                                 <SizesList items={item.sizes} />
                                 <Dialog>
                                   <DialogTrigger asChild>
-                                    {userRole === "cutting" && (
-                                      <Button variant="outline" size="sm" className="w-full mt-2">
-                                        Edit ({item.sizes.length} sizes)
-                                      </Button>
-                                    )}
+                                    {(userRole == "cutting" || userRole == "admin") && <Button variant="outline" size="sm" className="w-full mt-2">
+                                      Edit ({item.sizes.length} sizes,{userRole}  )
+                                    </Button>}
                                   </DialogTrigger>
                                   <DialogContent className="sm:max-w-[500px]">
                                     <DialogHeader>
@@ -1182,6 +1190,7 @@ export default function MainDashboard() {
                                     </DialogHeader>
                                     <SizesTodo
                                       items={item.sizes}
+                                      userRole={userRole}
                                       onUpdate={(newSizes) =>
                                         updateItemField({
                                           partyId: party.id,

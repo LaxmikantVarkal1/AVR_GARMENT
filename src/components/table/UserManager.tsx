@@ -153,7 +153,7 @@ export function UserManager({ users, onUpdate, sizes, itemName }: UserManagerPro
     const parts = value.split(":");
     return {
       size: parts[0] || "",
-      maxCount: parseInt(parts[1]) || 0,
+      maxCount: parseInt(parts[2]) || 0,
     };
   };
 
